@@ -358,7 +358,7 @@ sword = Weapon("Sword","A plain sword, made of steel in a human forge. A decent 
 scythe = Weapon("Scythe","A farming tool, sharpened to extreme measures. Useful for trapping an enemy's weapon.",30, 11)
 fists_of_fury = Weapon("Fists of Fury", "LISTEN UP, YOU PANSY. USE YOUR FISTS. PUNCH THEM INTO SUBMISSION!!!", 9001, 17)
 gnomes = Weapon("Infinite throwing gnomes","You're a horrible person if you use this", 100, 10)
-your_hammer = Weapon("Your pitiful hammer","You can't do anything with this, no wonder the ladies laugh at you.", -5, 5)
+your_hammer = Weapons("Your pitiful hammer","You can't do anything with this, no wonder the ladies laugh at you.", -5, 5)
         
 
 # NPC instances                    
