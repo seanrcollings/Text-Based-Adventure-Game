@@ -238,11 +238,13 @@ class Game():
                     self.player1.inventory.append(item)  
                 self.game_loop()
             else:
-                self.intro(save_inventory)
+                self.intro()
         else:
-            self.intro(save_inventory)
+            self.intro()
+        save_file.close()
+        save_inventory.close()
             
-    def intro(self, save_inventory): 
+    def intro(self, save_inventory=['Longsword']):
         self.save_inventory = save_inventory   
         print("Thanks for playing my simple little game!!!!")
         print("Just popping in before the game to give a couple tips:")
@@ -258,7 +260,7 @@ class Game():
             self.game_loop()
         else:
             print("I don't belive you know how to work a computer!")
-            
+
     def all_rooms_dictionary(self):
         all_rooms_dict = {}
         for room in self.all_rooms:
@@ -276,7 +278,7 @@ class Game():
 
 class Player():
     def __init__(self, name, health, inventory, gold, equipped):
-        self.name = namen
+        self.name = name
         self.health = health
         self.inventory = inventory
         self.gold = gold
@@ -358,7 +360,7 @@ sword = Weapon("Sword","A plain sword, made of steel in a human forge. A decent 
 scythe = Weapon("Scythe","A farming tool, sharpened to extreme measures. Useful for trapping an enemy's weapon.",30, 11)
 fists_of_fury = Weapon("Fists of Fury", "LISTEN UP, YOU PANSY. USE YOUR FISTS. PUNCH THEM INTO SUBMISSION!!!", 9001, 17)
 gnomes = Weapon("Infinite throwing gnomes","You're a horrible person if you use this", 100, 10)
-your_hammer = Weapons("Your pitiful hammer","You can't do anything with this, no wonder the ladies laugh at you.", -5, 5)
+your_hammer = Weapon("Your pitiful hammer","You can't do anything with this, no wonder the ladies laugh at you.", -5, 5)
         
 
 # NPC instances                    
