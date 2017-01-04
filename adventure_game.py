@@ -40,15 +40,20 @@ class Weapon():
         self.damage *= 2"""  
 
 
-class Item():
-    def __init__(self, name, description, damage, special_property = 0):
+
+class SpecialItem():
+    def __init__(self, name, description, damage, special_property):
         self.name = name
         self.description = description
         self.damage = damage
         self.special_property = special_property
 
-def special_property(self):
-    pass
+    def special_property(self, current_room):
+        self.current_room = current_room
+        if self.special_property == "reveal":
+            self.current_room.print_secret()
+        else:
+            pass
 
 
 
@@ -119,6 +124,7 @@ class Merchant(NPC):
         self.player = player
         self.print_greeting()
         print("NAME***********COST")
+
         for key, item in self.inventory.items():
             spaces = " " * (15 - len(item.name))
             print(item.name + spaces + str(item.cost) + "g")
@@ -156,7 +162,7 @@ class Game():
     #TODO: Make these more like a verb set(for now at least, hopefully have a another way at some point)    
     def handle_user_input(self):
         while True:
-            user_input_list = input().split()
+            user_input_list = input().split(" ", 1)
             
             user_input = ''
             if len(user_input_list) > 0:
@@ -177,16 +183,15 @@ class Game():
                 self.current_room = self.current_room.exits[user_input]
                 self.print_room_messages()
 
-            elif len(user_input_list) >= 2 and user_input_list[0] == "take" and user_input_list[1] in self.current_room.weapons.keys().split()[1]:
-                print("You took "+ self.current_room.weapons[user_input_list[1]].name)
-                self.player1.inventory.append(self.current_room.weapons[user_input_list[1]])
-
             elif len(user_input_list) >= 2 and user_input_list[0] == "take" and user_input_list[1] in self.current_room.items.keys():
                 print("You took "+ self.current_room.items[user_input_list[1]].name)
                 self.player1.inventory.append(self.current_room.items[user_input_list[1]])
 
-            elif len(user_input_list) >= 2 and user_input_list[0] == "equip" and user_input_list[1] in self.all_weapons_dictionary().keys():
+            elif len(user_input_list) >= 2 and user_input_list[0] == "equip" and user_input_list[1] in self.all_items_dictionary().keys():
                 self.player1.change_equipment(user_input_list[1])
+
+            elif len(user_input_list) >= 2 and user_input_list[0] == "use" and user_input_list[1] in self.player1.inventory:
+                all_items_dictionary[user_input_list[1]].special_property(current_room) 
 
             # Informational statements, outputs information
 
@@ -241,7 +246,7 @@ class Game():
                 print("Loading.....\n")
                 self.current_room = self.all_rooms_dictionary()[saved_room] 
                 for word in save_inventory:
-                    item = self.all_weapons_dictionary()[word.strip('\n')]
+                    item = self.all_items_dictionary()[word.strip('\n')]
                     self.player1.inventory.append(item)  
                 self.game_loop()
             else:
@@ -262,7 +267,7 @@ class Game():
             
         if confirm == "y":
             for word in self.save_inventory:
-                item = self.all_weapons_dictionary()[word.strip('\n')]
+                item = self.all_items_dictionary()[word.strip('\n')]
                 self.player1.inventory.append(item)  
             self.game_loop()
         else:
@@ -274,17 +279,10 @@ class Game():
             all_rooms_dict[room.name] = room
         return all_rooms_dict
 
-    def all_weapons_dictionary(self):
-        all_weapons =  [butterfly, longsword, greatsword, no_weapon, sword, scythe, fists_of_fury, gnomes, your_hammer]
-        all_weapons_dict = {}
-        for item in all_weapons: 
-            all_weapons_dict[item.name] = item
-        return all_weapons_dict
-
     def all_items_dictionary(self):
-        all_items = [eye_of_aganom]
+        all_items =  [butterfly, longsword, greatsword, no_weapon, sword, scythe, fists_of_fury, gnomes, your_hammer, eye_of_aganom, pendant]
         all_items_dict = {}
-        for item in all_items:
+        for item in all_items: 
             all_items_dict[item.name] = item
         return all_items_dict
 
@@ -332,13 +330,13 @@ class Player():
 
 
 class Room():
-    def __init__(self, welcome_message, name, exits, weapons, npcs, items):
+    def __init__(self, welcome_message, name, exits, items, npcs, secret):
         self.name = name
         self.welcome_message = welcome_message
         self.exits = exits
-        self.weapons = weapons
+        self.items = items
         self.npcs = npcs
-        self.items = items 
+        self.secret = secret
         
     def print_welcome(self):
         print(self.welcome_message)
@@ -350,10 +348,10 @@ class Room():
             print("The exit(s) are: " + ", ".join(self.exits.keys()))
         
     def print_items(self):
-        if len(self.items) and len(self.weapons) == 0:
+        if len(self.items) == 0:
             print("That are no items!")
         else:
-            print("The item(s) are: " + ", ".join(self.items.keys()) + ", " + ", ".join(self.weapons.keys()))
+            print("The item(s) are: " + ", ".join(self.items))
 
     def print_npcs(self):
         if len(self.npcs) == 0:
@@ -361,7 +359,11 @@ class Room():
         else:
             print("The people in the room are: " + ", ".join(self.npcs.keys()))
 
-
+    def print_secret(self):
+        if len(self.secret) == 0:
+            print("No secrets to be found")
+        else:
+            print(secret)
 
 ###################
 # CLASS INSTANCES #
@@ -379,9 +381,9 @@ fists_of_fury = Weapon("Fists of Fury", "LISTEN UP, YOU PANSY. USE YOUR FISTS. P
 gnomes = Weapon("Infinite throwing gnomes","You're a horrible person if you use this", 100, 10)
 your_hammer = Weapon("Your pitiful hammer","You can't do anything with this, no wonder the ladies laugh at you.", -5, 5)
 
-# Item Instances
-eye_of_aganom = Item("Eye Of Aganom", "The Eye of Aganom is a powerful relic used to reveal secrets about a location.", 0, "reveal")        
-pendant = Item("Pendant", "A simple pendant with no effect. Even so, pleasant memories are crucial to survival on arduous journeys." , 0, "no effect")
+# Special Item Instances
+eye_of_aganom = SpecialItem("Eye Of Aganom", "The Eye of Aganom is a powerful relic used to reveal secrets about a location.", 0, "reveal")        
+pendant = SpecialItem("Pendant", "A simple pendant with no effect. Even so, pleasant memories are crucial to survival on arduous journeys." , 0, "no effect")        
 
 # NPC instances                    
 sean = NPC("Sean", 100, "Hello Traveller", longsword, True, False)
@@ -390,13 +392,12 @@ nate_inven = {"Longsword": longsword, "Greatsword": greatsword}
 nate = Merchant("Nate", 100, "See anything you like?", no_weapon, True, False, nate_inven, alex)
 
 # Room Instances
-torture_chamber = Room("WELCOME TO DEATH", "Torture Chamber", {}, {}, {}, {})
-starting_room = Room("You awake in what appears to be a dungeon", "Starting Room", {"south": torture_chamber}, {"Longsword": longsword, "Greatsword": greatsword}, {"Nate": nate, "Alex": alex}, {"Eye Of Aganom": eye_of_aganom, "Pendant": pendant})
-test_room = Room("This is a test room", "Test Room", {"Starting Room": starting_room}, {"Longsword": longsword}, {"Nate": nate}, {"Eye Of Aganom": eye_of_aganom})
+torture_chamber = Room("WELCOME TO DEATH", "Torture Chamber", {}, {}, {}, "")
+starting_room = Room("You awake in what appears to be a dungeon", "Starting Room", {"south": torture_chamber}, {"Longsword": longsword, "Greatsword": greatsword, "Eye of Aganom": eye_of_aganom, "Pendant":pendant}, {"Nate": nate, "Alex": alex}, "There are many secrets in this room")
+test_room = Room("This is a test room", "Test Room", {"Starting Room": starting_room}, {"Longsword": longsword}, {"Nate": nate},"")
 
 underlines = "______________________"
 # Verbs
-
 
 
 all_rooms = [torture_chamber, starting_room, test_room]
