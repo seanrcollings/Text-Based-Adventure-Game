@@ -163,55 +163,52 @@ class Game():
     def handle_user_input(self):
         while True:
             user_input_list = input().split()
+            user_input = ''
+            if len (user_input_list) == 1:
+                user_input = user_input_list[0]
             
-            if len(user_input_list) == 2:
+            if len(user_input_list) >= 2: #Problem appears to be here, some input that should, isn't entering this, and the next, if statements.
                 self.handle_language(self.player1, self.current_room, " ".join(user_input_list[1:]), user_input_list[0])
 
-            elif len(user_input_list) > 2:
-                self.handle_language(self.player1, self.current_room, " ".join(user_input_list[2]), user_input_list[0], user_input_list[1])
+            elif user_input == "i":
+                print("______________________\nINVENTORY\n______________________")    
+                for item in self.player1.inventory:
+                    spaces = " " * (20 - len(item.name))
+                    print(item.name + spaces)
+                print("______________________")
+                
+            elif user_input == "g":
+                print(self.player1.gold)
+
+            elif user_input == "save":
+                save_file = open("save.txt", "w")
+                save_inventory = open("saved_inventory.txt", "w")
+                save_file.write(self.current_room.name)
+                for item in self.player1.inventory:
+                    save_inventory.write(str(item.name))
+                    save_inventory.write("\n")
+                print("You saved in the " + self.current_room.name)
+                save_inventory.close()
+                save_file.close()
+                
+            elif user_input == "health":
+                print("Your health is: " + str(self.player1.health))
+
+            elif user_input == 'exit':
+                print("Goodbye!")
+                sys.exit(0)        
+
+            elif user_input == "help":
+                self.help_function()
+
+            elif user_input == '':
+                pass
+
+            elif user_input == "debug":
+                self.player1.debug(self.current_room)
 
             else:
-                user_input = ''
-                user_input = user_input_list[0]
-                if user_input == "i":
-                    print("______________________\nINVENTORY\n______________________")    
-                    for item in self.player1.inventory:
-                        spaces = " " * (20 - len(item.name))
-                        print(item.name + spaces)
-                    print("______________________")
-                
-                elif user_input == "g":
-                    print(self.player1.gold)
-
-                elif user_input == "save":
-                    save_file = open("save.txt", "w")
-                    save_inventory = open("saved_inventory.txt", "w")
-                    save_file.write(self.current_room.name)
-                    for item in self.player1.inventory:
-                        save_inventory.write(str(item.name))
-                        save_inventory.write("\n")
-                    print("You saved in the " + self.current_room.name)
-                    save_inventory.close()
-                    save_file.close()
-                
-                elif user_input == "health":
-                    print("Your health is: " + self.player1.health)
-
-                elif user_input == 'exit':
-                    print("Goodbye!")
-                    sys.exit(0)        
-
-                elif user_input == "help":
-                    self.help_function()
-
-                elif user_input == '':
-                    pass
-
-                elif user_input == "debug":
-                    self.player1.debug(self.current_room)
-
-                else:
-                    print("Invalid option!")
+                print("Invalid option!")
 
     def handle_language(self, player, current_room, noun, verb, adjective = ""): # Handles more than 1 word inputs, usually in the form of verb adjective(optional) noun 
         self.player = player
@@ -237,6 +234,9 @@ class Game():
         elif verb == "attack" and noun in self.current_room.npcs.keys():
             npc_to_attack = self.current_room.npcs[noun]
             self.player.attack(npc_to_attack)
+
+        else:
+            print("Invalid option!")
 
     def start(self):
         save_file = open("save.txt", "r")
