@@ -164,77 +164,80 @@ class Game():
         while True:
             user_input_list = input().split()
             
-            user_input = ''
-            if len(user_input_list) > 0:
-                user_input = user_input_list[0]
-            
-            # Ways for the player to interact with/ move in  their surroundings
+            if len(user_input_list) == 2:
+                self.handle_language(self.player1, self.current_room, " ".join(user_input_list[1:]), user_input_list[0])
 
-            if len(user_input_list) >= 2 and user_input_list[0] == "interact" and user_input_list[1] == "with":
-                npc_to_interact_with = self.current_room.npcs[user_input_list[2]]
-                # TODO: what if the NPC doesn't exist?
-                npc_to_interact_with.interact_with_player(self.player1)
-
-            elif len(user_input_list) >= 2 and user_input_list[0] == "attack" and user_input_list[1] in self.current_room.npcs.keys():
-                npc_to_attack = self.current_room.npcs[user_input_list[1]]
-                self.player1.attack(npc_to_attack)
-                
-            elif len(user_input_list) >= 2 and user_input_list[0] == "go" and user_input_list[1] in self.current_room.exits.keys():
-                self.current_room = self.current_room.exits[user_input]
-                self.print_room_messages()
-
-            elif len(user_input_list) >= 2 and user_input_list[0] == "take" and user_input_list[1] in self.current_room.items.keys():
-                print("You took "+ self.current_room.items[user_input_list[1]].name)
-                self.player1.inventory.append(self.current_room.items[user_input_list[1]])
-
-            elif len(user_input_list) >= 2 and user_input_list[0] == "equip" and user_input_list[1] in self.all_items_dictionary().keys():
-                self.player1.change_equipment(user_input_list[1])
-
-            elif len(user_input_list) >= 2 and user_input_list[0] == "use" and user_input_list[1] in self.player1.inventory:
-                all_items_dictionary[user_input_list[1]].special_property(current_room) 
-
-            # Informational statements, outputs information
-
-            elif user_input == "i":
-                print("______________________\nINVENTORY\n______________________")    
-                for item in self.player1.inventory:
-                    spaces = " " * (20 - len(item.name))
-                    print(item.name + spaces)
-                print("______________________")
-            
-            elif user_input == "g":
-                print(self.player1.gold)
-
-            elif user_input == "save":
-                save_file = open("save.txt", "w")
-                save_inventory = open("saved_inventory.txt", "w")
-                save_file.write(self.current_room.name)
-                for item in self.player1.inventory:
-                    save_inventory.write(str(item.name))
-                    save_inventory.write("\n")
-                print("You saved in the " + self.current_room.name)
-                save_inventory.close()
-                save_file.close()
-            
-            elif user_input == "health":
-                print("Your health is: " + self.player1.health)
-
-            elif user_input == 'exit':
-                print("Goodbye!")
-                sys.exit(0)        
-
-            elif user_input == "help":
-                self.help_function()
-
-            elif user_input == '':
-                pass
-
-            elif user_input == "debug":
-                self.player1.debug(self.current_room)
+            elif len(user_input_list) > 2:
+                self.handle_language(self.player1, self.current_room, " ".join(user_input_list[2]), user_input_list[0], user_input_list[1])
 
             else:
-                print("Invalid option!")
-               
+                user_input = ''
+                user_input = user_input_list[0]
+                if user_input == "i":
+                    print("______________________\nINVENTORY\n______________________")    
+                    for item in self.player1.inventory:
+                        spaces = " " * (20 - len(item.name))
+                        print(item.name + spaces)
+                    print("______________________")
+                
+                elif user_input == "g":
+                    print(self.player1.gold)
+
+                elif user_input == "save":
+                    save_file = open("save.txt", "w")
+                    save_inventory = open("saved_inventory.txt", "w")
+                    save_file.write(self.current_room.name)
+                    for item in self.player1.inventory:
+                        save_inventory.write(str(item.name))
+                        save_inventory.write("\n")
+                    print("You saved in the " + self.current_room.name)
+                    save_inventory.close()
+                    save_file.close()
+                
+                elif user_input == "health":
+                    print("Your health is: " + self.player1.health)
+
+                elif user_input == 'exit':
+                    print("Goodbye!")
+                    sys.exit(0)        
+
+                elif user_input == "help":
+                    self.help_function()
+
+                elif user_input == '':
+                    pass
+
+                elif user_input == "debug":
+                    self.player1.debug(self.current_room)
+
+                else:
+                    print("Invalid option!")
+
+    def handle_language(self, player, current_room, noun, verb, adjective = ""): # Handles more than 1 word inputs, usually in the form of verb adjective(optional) noun 
+        self.player = player
+        self.current_room = current_room
+        self.noun = noun
+        self.verb = verb
+        self.adjective = adjective
+        
+        if verb == "take" and noun in self.current_room.items.keys():
+            self.player.inventory.append(self.current_room.items[noun])
+            print("You took " + noun)
+        
+        elif verb == "interact" and noun in self.current_room.npcs.keys():
+            npc_to_interact_with = self.current_room.npcs[noun]
+            npc_to_interact_with.interact_with_player(self.player1)  
+        
+        elif verb == "go" and noun in self.current_room.exits.keys():
+            self.current_room = self.current_room.exits[noun]
+
+        elif verb == "equip" and noun in self.all_items_dictionary().keys():
+             self.player.change_equipment(noun)
+
+        elif verb == "attack" and noun in self.current_room.npcs.keys():
+            npc_to_attack = self.current_room.npcs[noun]
+            self.player.attack(npc_to_attack)
+
     def start(self):
         save_file = open("save.txt", "r")
         save_inventory = open("saved_inventory.txt", "r")
