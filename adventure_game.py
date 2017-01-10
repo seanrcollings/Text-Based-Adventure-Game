@@ -162,7 +162,7 @@ class Game():
     #TODO: Make these more like a verb set(for now at least, hopefully have a another way at some point)    
     def handle_user_input(self):
         while True:
-            user_input_list = input().split(" ", 1)
+            user_input_list = input().split()
             
             user_input = ''
             if len(user_input_list) > 0:
@@ -179,7 +179,7 @@ class Game():
                 npc_to_attack = self.current_room.npcs[user_input_list[1]]
                 self.player1.attack(npc_to_attack)
                 
-            elif user_input in self.current_room.exits.keys():
+            elif len(user_input_list) >= 2 and user_input_list[0] == "go" and user_input_list[1] in self.current_room.exits.keys():
                 self.current_room = self.current_room.exits[user_input]
                 self.print_room_messages()
 
@@ -363,7 +363,7 @@ class Room():
         if len(self.secret) == 0:
             print("No secrets to be found")
         else:
-            print(secret)
+            print(self.secret)
 
 ###################
 # CLASS INSTANCES #
