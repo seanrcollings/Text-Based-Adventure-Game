@@ -1,4 +1,4 @@
 Naked
-Iron Chestplate
 Iron Helmet
+Iron Chestplate
 Greatsword
