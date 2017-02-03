@@ -20,11 +20,12 @@ class Weapon():
 
 
 class SpecialItem():
-    def __init__(self, name, description, damage, special_property):
+    def __init__(self, name, description, damage, special_property, cost):
         self.name = name
         self.description = description
         self.damage = damage
         self.special_property = special_property
+        self.cost = cost
 
     def special_property_use(self, current_room):
         if self.special_property == "reveal":
@@ -37,11 +38,12 @@ class SpecialItem():
 
 
 class Armor():
-    def __init__(self, name, description, defense, armor_type):
+    def __init__(self, name, description, defense, armor_type, cost):
         self.name = name
         self.description = description
         self.defense = defense
         self.armor_type = armor_type
+        self.cost = cost
         
 
     def calc_damage_reduction(self, weapon):
@@ -91,7 +93,8 @@ class Merchant(NPC):
     def buy(self, player):
         buying_input = input().split()
         if len(buying_input) != 2:
-            print("In order to buy, say 'buy thing'")
+            print("In order to buy, say 'buy (item)'")
+            print("In order to sell, say 'sell (item)'")
         elif buying_input[0] == "buy" and buying_input[1] in self.inventory.keys():
             # TODO: error message if the merchant does not have the item
             item = self.inventory[buying_input[1]]
@@ -99,6 +102,10 @@ class Merchant(NPC):
             player.gold -= item.cost
             del self.inventory[buying_input[1]]
             print("You bought " + buying_input[1])
+        elif buying_input[0] == "sell" and buying_input[1] in player.items_dictionary().keys():
+            player.inventory.remove(player.items_dictionary[buying_input[1]])
+            player.gold += player.items_dictionary[buying_input[1]].cost
+            print("You sold " + buying_input[1]) 
 
     def attack(self, attacking_npc):
         if not self.pacifist:
@@ -153,7 +160,7 @@ class Game():
         print("Type 'exit' to quite the game")
     
     def handle_user_input(self):
-        while True:
+        while player.health > 0:
             print("\n")
             user_input_list = input(">>> ").split()
             user_input = ''
@@ -167,9 +174,13 @@ class Game():
                 self.handle_language(" ".join(user_input_list[2:]), user_input_list[0].lower(), user_input_list[1])
 
             elif user_input == 'i':
-                print("______________________\nINVENTORY\n______________________")  
-                inventory_text = [print(item.name + " " * (20 - len(item.name))) for item in self.player.inventory]
-                print("______________________")
+                print(UNDERLINES + "______")
+                print("---------INVENTORY----------")
+                print(UNDERLINES + "______")
+                print("NAME                    COST")  
+                print(UNDERLINES + "______")
+                inventory_text = [print(item.name + " " * (26 - len(item.name + str(item.cost))) + str(item.cost) + "g |")  for item in self.player.inventory]
+                print(UNDERLINES + "______")
                 
             elif user_input == 'g':
                 print(self.player.gold)
@@ -211,12 +222,17 @@ class Game():
             else:
                 print("Invalid option!(In handle_user_input)")
 
+        print("YOU DIED")
+
+
     def handle_language(self, noun, verb, adjective = ""):
         """Handles more than 1 word inputs, usually in the form of verb adjective(optional) noun"""
-
-        if verb == 'take' and noun in self.current_room.items.keys():
-            self.player.inventory.append(self.current_room.items[noun])
-            del self.current_room.items[noun]
+        
+        room_items = [item.name for item in self.current_room.items]
+        
+        if verb == 'take' and noun in room_items:
+            self.player.inventory.append(self.all_items_dictionary()[noun])
+            self.current_room.items.remove(self.all_items_dictionary()[noun])
             print("You took " + noun)
         
         elif verb == 'interact' and adjective == 'with' and noun in self.current_room.npcs.keys():
@@ -241,10 +257,10 @@ class Game():
             print(player_items[noun].description)
 
         elif verb == 'check' and noun == 'equipment':
-            print("Weapon: " + self.player.weapon.name)
-            print("Head: " + self.player.armor["head"].name)
-            print("Chest: " + self.player.armor["chest"].name)
-            print("Legs: " + self.player.armor["legs"].name)
+            print("Weapon:   " + self.player.weapon.name)
+            print("Head:     " + self.player.armor["head"].name)
+            print("Chest:    " + self.player.armor["chest"].name)
+            print("Legs:     " + self.player.armor["legs"].name)
 
         elif verb == 'room' and noun == 'message':
             self.print_room_messages()
@@ -339,14 +355,14 @@ class Player():
                 print("You killed " + self.npc_to_attack.name)
             else:
                 print("You attacked " + npc_to_attack.name + " and did " + str(self.weapon.damage) + " damage.")
-                npc_to_attack.attacked(self)
+                npc_to_attack.attack(self)
 
     def change_equipment(self, item_to_equip):
-        if type(item_names[item_to_equip]) is Weapon:
-            self.weapon = item_names[item_to_equip]
+        if type(self.items_dictionary()[item_to_equip]) is Weapon:
+            self.weapon = self.items_dictionary()[item_to_equip]
             print("You equipped " + item_to_equip)
-        elif type(item_names[item_to_equip]) is Armor:
-            self.armor[item_names[item_to_equip].armor_type] = item_names[item_to_equip]
+        elif type(self.items_dictionary()[item_to_equip]) is Armor:
+            self.armor[self.items_dictionary()[item_to_equip].armor_type] = self.items_dictionary()[item_to_equip]
             print("You equipped " + item_to_equip)
         else:
             print("That item is not equipable.")
@@ -462,47 +478,55 @@ your_hammer = Weapon(
     )
 
 # Special Item Instances
-# name, descriptino, damage,    
+# name, description, damage, special property, cost    
 eye_of_aganom = SpecialItem(
     "Eye of Aganom",
     "The Eye of Aganom is a powerful relic used to reveal secrets about a location.",
     0,
-    "reveal"
-    )        
+    "reveal",
+    90
+    )       
+
 pendant = SpecialItem(
     "Pendant",
     "A simple pendant with no effect. Even so, pleasant memories are crucial to survival on arduous journeys.",
     0,
-    "no effect"
+    "no effect",
+    99999
     )  
 
 # Armor instances
-# name, description, defense, piece
+# name, description, defense, piece, cost
 iron_helm = Armor(
     "Iron Helmet",
     "A simple, but dependable Iron Helmet",
     .25,
-    "head"
+    "head",
+    25
     )      
 
 iron_chest = Armor(
     "Iron Chestplate",
     "A simple, but dependable Iron Chestplate",
     .30,
-    "chest"
+    "chest",
+    25
     )
 
 iron_legs = Armor(
     "Iron Leggings",
     "Simple, but dependable Iron Legging",
     .25,
-    "leg")
+    "leg",
+    25
+    )
 
 naked = Armor(
     "Naked",
     "",
     0,
-    ""
+    "",
+    0
     )
 
 # NPC instances  
@@ -520,7 +544,7 @@ alex = NPC(
     "Alex",
     100,
     "I'm a butt",
-    butterfly,
+    fists_of_fury,
     True,
     False
     )
