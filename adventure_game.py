@@ -381,7 +381,7 @@ class Room():
         if len(self.items) == 0:
              print("That are no items!")
         else:
-            print("The item(s) are: " + ", ".join(self.items))
+            print("The item(s) are: " + ", ".join(item.name for item in self.items))
 
     def print_npcs(self):
         if len(self.npcs) == 0:
@@ -542,7 +542,7 @@ bedroom1 = Room(
     "The bedroom agoining the the antechamber was equally as large and lavish with many beuitiful works of art hanging from its walls",
     "Bedroom(1)",
     {},
-    {},
+    [pendant],
     {},
     ""
     )
@@ -551,7 +551,7 @@ hallway = Room(
     "The hallway was also just as beutiful and lavish as the rest of the rooms had been, with huge windows alowing a flooding in of natural light.",
     "Hallway",
     {},
-    {},
+    [],
     {},
     ""
     )
@@ -560,7 +560,7 @@ antechamber = Room(
     "You walk into a large and brightly lit antechamber, filled with incredibly expensive looking decor adorning its interior",
     "Antechamber",
     {"east": bedroom1, "north": hallway},
-    {},
+    [],
     {},
     ""
     )
@@ -569,7 +569,7 @@ torture_chamber = Room(
     "WELCOME TO DEATH",
     "Torture Chamber",
     {},
-    {},
+    [],
     {},
     ""
     )
@@ -578,7 +578,7 @@ starting_room = Room(
     "You awake in what appears to be a dungeon", 
     "Starting Room",
     {"south": torture_chamber, "east": antechamber},
-    {"Longsword": longsword, "Greatsword": greatsword, "Eye of Aganom": eye_of_aganom, "Pendant":pendant, "Iron Helmet": iron_helm, "Iron Chestplate": iron_chest},
+    [longsword, greatsword, eye_of_aganom],
     {"Nate": nate, "Alex": alex}, 
     "There are many secrets in this room"
     )
@@ -587,7 +587,7 @@ test_room = Room(
     "This is a test room",
     "Test Room",
     {"Starting Room": starting_room},
-    {"Longsword": longsword}, 
+    [], 
     {"Nate": nate},
     ""
     )
