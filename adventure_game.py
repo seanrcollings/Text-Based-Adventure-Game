@@ -1,6 +1,7 @@
 import sys
 import pdb
 import time
+import pickle
 
 
 ################
@@ -92,20 +93,22 @@ class Merchant(NPC):
     # TODO: if input is invalid, allow them to try again
     def buy(self, player):
         buying_input = input().split()
+        verb = buying_input[0]
+        noun = " ".join(buying_input[1:])
         if len(buying_input) != 2:
             print("In order to buy, say 'buy (item)'")
             print("In order to sell, say 'sell (item)'")
-        elif buying_input[0] == "buy" and buying_input[1] in self.inventory.keys():
+        elif verb == "buy" and noun in self.inventory.keys():
             # TODO: error message if the merchant does not have the item
-            item = self.inventory[buying_input[1]]
+            item = self.inventory[noun]
             player.inventory.append(item)
             player.gold -= item.cost
-            del self.inventory[buying_input[1]]
-            print("You bought " + buying_input[1])
-        elif buying_input[0] == "sell" and buying_input[1] in player.items_dictionary().keys():
-            player.inventory.remove(player.items_dictionary[buying_input[1]])
-            player.gold += player.items_dictionary[buying_input[1]].cost
-            print("You sold " + buying_input[1]) 
+            del self.inventory[noun]
+            print("You bought " + noun)
+        elif verb == "sell" and noun in player.items_dictionary().keys():
+            player.inventory.remove(player.items_dictionary[noun])
+            player.gold += player.items_dictionary[noun].cost
+            print("You sold " + noun) 
 
     def attack(self, attacking_npc):
         if not self.pacifist:
@@ -119,18 +122,18 @@ class Merchant(NPC):
         print(UNDERLINES)
         for key, item in self.inventory.items():
             print(item.name + "%10d" %item.cost + "g")
-        self.buy(player)
         print(UNDERLINES)
-  
+        self.buy(player)
   
 
 class Game():
-    def __init__(self, starting_room, all_rooms, all_items, player):
+    def __init__(self, starting_room, all_rooms, all_items, player, menus):
         self.all_rooms = all_rooms
         self.all_items = all_items
         self.current_room = starting_room
         self.previous_rooms = []
         self.player = player
+        self.menus = menus
 
     def game_loop(self):
         self.print_room_messages()
@@ -166,6 +169,7 @@ class Game():
             user_input = ''
             if len(user_input_list) == 1:
                 user_input = user_input_list[0]
+            
             elif len(user_input_list) >= 2:
                 self.handle_language(" ".join(user_input_list[1:]), user_input_list[0].lower())
             possible_adjectives = ["with"] # Temporary fix for entering handle_language twice with the 2 if statements below, working and the printing the fail state. 
@@ -173,15 +177,10 @@ class Game():
             if len(user_input_list) >= 3 and user_input_list[1] in possible_adjectives: # Temporary fix for interacting with NPCs, change to account for this in the previous statment later
                 self.handle_language(" ".join(user_input_list[2:]), user_input_list[0].lower(), user_input_list[1])
 
-            elif user_input == 'i':
-                print(UNDERLINES + "______")
-                print("---------INVENTORY----------")
-                print(UNDERLINES + "______")
-                print("NAME                    COST")  
-                print(UNDERLINES + "______")
-                inventory_text = [print(item.name + " " * (26 - len(item.name + str(item.cost))) + str(item.cost) + "g |")  for item in self.player.inventory]
-                print(UNDERLINES + "______")
-                
+
+            elif user_input == 'i': 
+                self.menus["Inventory"].print_menu()                                                
+
             elif user_input == 'g':
                 print(self.player.gold)
 
@@ -190,21 +189,15 @@ class Game():
                 self.print_room_messages()
 
             elif user_input == 'save':
-                save_file = open("save.txt", "w")
-                save_inventory = open("saved_inventory.txt", "w")
-                save_equipment = open("saved_equipment.txt", "w")
-                save_file.write(self.current_room.name)
-                for item in self.player.inventory:
-                    save_inventory.write(str(item.name))
-                    save_inventory.write("\n")
-                for item in self.player.armor.keys():
-                    save_equipment.write(self.player.armor[item].name)
-                    save_equipment.write("\n")
-                save_equipment.write(self.player.weapon.name)
-                print("You saved in the " + self.current_room.name)
-                save_inventory.close()
+                save_info = {
+                "player": self.player,
+                "current room": self.current_room,
+                "previous rooms": self.previous_rooms,
+                }
+                save_file = open("save.pkl", "wb")
+                pickle.dump(save_info, save_file)
+                print("You saved in: " + self.current_room.name)   
                 save_file.close()
-                save_equipment.close()
 
             elif user_input == 'health':
                 print("Your health is: " + str(self.player.health))
@@ -229,14 +222,14 @@ class Game():
         """Handles more than 1 word inputs, usually in the form of verb adjective(optional) noun"""
         
         room_items = [item.name for item in self.current_room.items]
-        
-        if verb == 'take' and noun in room_items:
+        room_npcs  = [npc.name for npc in self.current_room.npcs]
+
+        if verb == 'take' and noun in room_items: # Need to reconsolidate my instances, causing bugs when loading multiple
             self.player.inventory.append(self.all_items_dictionary()[noun])
-            self.current_room.items.remove(self.all_items_dictionary()[noun])
             print("You took " + noun)
         
-        elif verb == 'interact' and adjective == 'with' and noun in self.current_room.npcs.keys():
-            self.current_room.npcs[noun].interact_with_player(self.player)
+        elif verb == 'interact' and adjective == 'with' and noun in room_npcs:
+            " ".join([npc for npcs in self.current_room.npcs if npc.name == noun]).interact_with_player(self.player)
         
         elif verb == 'go' and noun in self.current_room.exits.keys():
             self.previous_rooms.append(self.current_room)
@@ -269,38 +262,19 @@ class Game():
             print("Invalid option!(In handle_language)")
 
     def start(self):
-        save_file = open("save.txt", "r")
-        save_inventory = open("saved_inventory.txt", "r")
-        save_equipment = open("saved_equipment.txt", "r")
-        saved_room = save_file.read()
-        equipment = save_equipment.readlines()
-        if len(saved_room) > 0:
-            print("Looks like you have a save in: \n" + saved_room)
-            print("Should we load this save (y/n)? ")
-            if input() == "y":
-                print("Loading.....\n")
-                self.current_room = self.all_rooms_dictionary()[saved_room] 
-                for word in save_inventory:
-                    item = self.all_items_dictionary()[word.strip('\n')]
-                    self.player.inventory.append(item)
-                self.player.weapon = self.all_items_dictionary()[equipment[3].strip('\n')]
-                for item in equipment:
-                    item = item.strip('\n')
-                    if type(self.all_items_dictionary()[item]) is Armor: 
-                        if self.all_items_dictionary()[item].armor_type == 'head':
-                            self.player.armor['head'] = self.all_items_dictionary()[item]
-                        elif self.all_items_dictionary()[item].armor_type == 'chest':
-                            self.player.armor['chest'] = self.all_items_dictionary()[item]
-                        elif self.all_items_dictionary()[item].armor_type == 'legs':
-                            self.player.armor['legs'] = self.all_items_dictionary()[item]
-
-                self.game_loop()
-            else:
-                self.intro()
+        file = open('save.pkl', 'rb')
+        load_file = pickle.load(file)
+        load_input = input("It looks like you have a save in: \n" + load_file['current room'].name + "\nWould you like to load it?(y/n) \n")
+        if load_input == 'y':
+            print("Loading....")
+            self.current_room = load_file['current room']
+            self.previous_rooms = load_file['previous rooms']
+            self.player = load_file['player']
+            file.close()
+            self.game_loop()
         else:
+            file.close()
             self.intro()
-        save_file.close()
-        save_inventory.close()
 
             
     def intro(self, save_inventory = ["Fists of Fury"]):
@@ -309,8 +283,7 @@ class Game():
         print("1. Press i will allow you to view your inventory")
         print("2. Typing save will allow you to save your game")
         print("3. You can acess the help at any time by typing help")
-        confirm = input("Type y to start the game when you are ready!\n")
-            
+        confirm = input("Type y to start the game when you are ready!\n")      
         if confirm == "y":
             for word in self.save_inventory:
                 item = self.all_items_dictionary()[word.strip('\n')]
@@ -330,6 +303,7 @@ class Game():
         for item in self.all_items: 
             all_items_dict[item.name] = item
         return all_items_dict
+
 
 
 
@@ -403,13 +377,27 @@ class Room():
         if len(self.npcs) == 0:
             print("There are no NPCs!")
         else:
-            print("The people in the room are: " + ", ".join(self.npcs.keys()))
+            print("The people in the room are: " + ", ".join(npc.name for npc in self.npcs))
 
     def print_secret(self):
         if len(self.secret) == 0:
             print("No secrets to be found")
         else:
             print(self.secret)
+
+
+
+class Menu():
+    def __init__(self, name, menu_pieces):
+        self.name = name
+        self.menu_pieces = menu_pieces
+
+    def print_menu(self):
+        print("_" * 28)
+        print("---------" + self.name + "----------")
+        print(UNDERLINES + "______")
+        [print(item.name + " " * (26 - len(item.name + str(item.cost))) + str(item.cost) + "g |") for item in self.menu_pieces]
+        print(UNDERLINES + "______")
 
 
 ###################
@@ -567,7 +555,7 @@ bedroom1 = Room(
     "Bedroom(1)",
     {},
     [pendant],
-    {},
+    [],
     ""
     )
 
@@ -576,7 +564,7 @@ hallway = Room(
     "Hallway",
     {},
     [],
-    {},
+    [],
     ""
     )
 
@@ -585,7 +573,7 @@ antechamber = Room(
     "Antechamber",
     {"east": bedroom1, "north": hallway},
     [],
-    {},
+    [],
     ""
     )
 
@@ -594,7 +582,7 @@ torture_chamber = Room(
     "Torture Chamber",
     {},
     [],
-    {},
+    [],
     ""
     )
 
@@ -603,7 +591,7 @@ starting_room = Room(
     "Starting Room",
     {"south": torture_chamber, "east": antechamber},
     [longsword, greatsword, eye_of_aganom],
-    {"Nate": nate, "Alex": alex}, 
+    [nate, alex], 
     "There are many secrets in this room"
     )
     
@@ -612,16 +600,19 @@ test_room = Room(
     "Test Room",
     {"Starting Room": starting_room},
     [], 
-    {"Nate": nate},
+    [nate],
     ""
     )
 
-
+# Top level stuff
 UNDERLINES = "______________________"
-# verbs
-
 all_items = [butterfly, longsword, greatsword, no_weapon, sword, scythe, fists_of_fury, gnomes, your_hammer, eye_of_aganom, pendant, iron_helm, iron_chest, naked]
 all_rooms = [torture_chamber, starting_room, test_room]
+
 player = Player("Sean", 100, [], 60, longsword, {"head": naked, "chest": naked, "legs": naked})
-game = Game(starting_room, all_rooms, all_items, player)
+
+# Menu Instances
+inventory = Menu("INVENTORY", player.inventory)
+
+game = Game(starting_room, all_rooms, all_items, player, {"Inventory" : inventory})
 game.start()
