@@ -133,7 +133,7 @@ class Game():
         self.print_room_messages()
         self.handle_user_input()
 
-    def slow_text(self, text): # Don't like how this works, need a way for it just to print everything at once if a button is pressed
+    def slow_text(self, text): # Don't like how this works, need a way for it just to print everything at once if a button is pressed (Threading?)
         for letter in text:
             sys.stdout.write(letter)
             sys.stdout.flush()
@@ -394,6 +394,8 @@ class Area():
     def print_area_name():
         if len(self.name) > 0:
             print(self.name)
+        else:
+            print("")
 
 
 
@@ -402,12 +404,20 @@ class Menu():
         self.name = name
 
     def print_menu(self, menu_components):
-        print("_" * 28)
-        print(self.name)
-        print("_" * 28)
-        for item in menu_components:
-            print(item.name + " " * (26 - len(item.name + str(item.cost))) + str(item.cost) + "g |")
-        print("_" * 28)
+        if type(menu_components) == list:
+            print("_" * 28)
+            print(self.name)
+            print("_" * 28)    
+            for item in menu_components:
+                print(item.name + " " * (26 - len(item.name + str(item.cost))) + str(item.cost) + "g |")
+            print("_" * 28)
+        elif type(menu_components) == dict:
+            print("_" * 28)
+            print(self.name)
+            print("_" * 28)         
+            for key, val in menu_components:
+                print(val.name + " " * (26 - len(val.name + str(val.cost))) + str(val.cost) + "g |")
+
 
 
 ###################
