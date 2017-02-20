@@ -112,28 +112,22 @@ class Merchant(NPC):
 
     def attack(self, attacking_npc):
         if not self.pacifist:
-            print("The merchant's guard lurched at you and attacked, doing " + str(self.guards.weapon.damage) + " damage.")
-            super().attack(attacking_npc)
+            guards.attack(attacking_npc)
 
     def interact_with_player(self, player):
         self.print_greeting()
-        print(UNDERLINES)
-        print("NAME|         |COST")
-        print(UNDERLINES)
-        for key, item in self.inventory.items():
-            print(item.name + "%10d" %item.cost + "g")
-        print(UNDERLINES)
+        merchant_inventory.print_menu(self.inventory)
         self.buy(player)
   
 
 class Game():
-    def __init__(self, starting_room, all_rooms, all_items, player, menus):
+    def __init__(self, starting_room, all_rooms, all_items, all_npcs, player):
         self.all_rooms = all_rooms
         self.all_items = all_items
+        self.all_npcs = all_npcs
         self.current_room = starting_room
         self.previous_rooms = []
         self.player = player
-        self.menus = menus
 
     def game_loop(self):
         self.print_room_messages()
@@ -163,6 +157,7 @@ class Game():
         print("Type 'exit' to quite the game")
     
     def handle_user_input(self):
+        possible_adjectives = ["with"] # Temporary fix for entering handle_language twice with the 2 if statements below, working and the printing the fail state. 
         while player.health > 0:
             print("\n")
             user_input_list = input(">>> ").split()
@@ -170,19 +165,17 @@ class Game():
             if len(user_input_list) == 1:
                 user_input = user_input_list[0]
             
-            elif len(user_input_list) >= 2:
+            elif len(user_input_list) >= 2 and user_input_list[1] not in possible_adjectives:
                 self.handle_language(" ".join(user_input_list[1:]), user_input_list[0].lower())
-            possible_adjectives = ["with"] # Temporary fix for entering handle_language twice with the 2 if statements below, working and the printing the fail state. 
-            
-            if len(user_input_list) >= 3 and user_input_list[1] in possible_adjectives: # Temporary fix for interacting with NPCs, change to account for this in the previous statment later
+        
+            elif len(user_input_list) >= 3 and user_input_list[1] in possible_adjectives: # Temporary fix for interacting with NPCs, change to account for this in the previous statment later
                 self.handle_language(" ".join(user_input_list[2:]), user_input_list[0].lower(), user_input_list[1])
 
-
-            elif user_input == 'i': 
-                self.menus["Inventory"].print_menu()                                                
+            if user_input == 'i': 
+                inventory.print_menu(self.player.inventory)                                                
 
             elif user_input == 'g':
-                print(self.player.gold)
+                print(str(self.player.gold))
 
             elif user_input == 'back':
                 self.current_room = self.previous_rooms.pop()
@@ -221,15 +214,14 @@ class Game():
     def handle_language(self, noun, verb, adjective = ""):
         """Handles more than 1 word inputs, usually in the form of verb adjective(optional) noun"""
         
-        room_items = [item.name for item in self.current_room.items]
         room_npcs  = [npc.name for npc in self.current_room.npcs]
 
-        if verb == 'take' and noun in room_items: # Need to reconsolidate my instances, causing bugs when loading multiple
+        if verb == 'take' and noun in self.current_room.items.keys():
             self.player.inventory.append(self.all_items_dictionary()[noun])
             print("You took " + noun)
         
         elif verb == 'interact' and adjective == 'with' and noun in room_npcs:
-            " ".join([npc for npcs in self.current_room.npcs if npc.name == noun]).interact_with_player(self.player)
+            self.all_npcs_dictionary()[noun].interact_with_player(player)
         
         elif verb == 'go' and noun in self.current_room.exits.keys():
             self.previous_rooms.append(self.current_room)
@@ -262,18 +254,21 @@ class Game():
             print("Invalid option!(In handle_language)")
 
     def start(self):
-        file = open('save.pkl', 'rb')
-        load_file = pickle.load(file)
-        load_input = input("It looks like you have a save in: \n" + load_file['current room'].name + "\nWould you like to load it?(y/n) \n")
-        if load_input == 'y':
-            print("Loading....")
-            self.current_room = load_file['current room']
-            self.previous_rooms = load_file['previous rooms']
-            self.player = load_file['player']
-            file.close()
-            self.game_loop()
-        else:
-            file.close()
+        try:
+            file = open('save.pkl', 'rb')
+            load_file = pickle.load(file)
+            load_input = input("It looks like you have a save in: \n" + load_file['current room'].name + "\nWould you like to load it?(y/n) \n")
+            if load_input == 'y':
+                print("Loading....")
+                self.current_room = load_file['current room']
+                self.previous_rooms = load_file['previous rooms']
+                self.player = load_file['player']
+                file.close()
+                self.game_loop()
+            else:
+                file.close()
+                self.intro()
+        except EOFError:
             self.intro()
 
             
@@ -304,6 +299,11 @@ class Game():
             all_items_dict[item.name] = item
         return all_items_dict
 
+    def all_npcs_dictionary(self):
+        all_npcs_dict = {}
+        for npc in self.all_npcs:
+            all_npcs_dict[npc.name] = npc 
+        return all_npcs_dict
 
 
 
@@ -371,7 +371,7 @@ class Room():
         if len(self.items) == 0:
              print("That are no items!")
         else:
-            print("The item(s) are: " + ", ".join(item.name for item in self.items))
+            print("The item(s) are: " + ", ".join(self.items.keys()))
 
     def print_npcs(self):
         if len(self.npcs) == 0:
@@ -386,18 +386,28 @@ class Room():
             print(self.secret)
 
 
+class Area():
+    def __init__(self, name, rooms):
+        self.name = name
+        self.rooms = rooms
+
+    def print_area_name():
+        if len(self.name) > 0:
+            print(self.name)
+
+
 
 class Menu():
-    def __init__(self, name, menu_pieces):
+    def __init__(self, name):
         self.name = name
-        self.menu_pieces = menu_pieces
 
-    def print_menu(self):
+    def print_menu(self, menu_components):
         print("_" * 28)
-        print("---------" + self.name + "----------")
-        print(UNDERLINES + "______")
-        [print(item.name + " " * (26 - len(item.name + str(item.cost))) + str(item.cost) + "g |") for item in self.menu_pieces]
-        print(UNDERLINES + "______")
+        print(self.name)
+        print("_" * 28)
+        for item in menu_components:
+            print(item.name + " " * (26 - len(item.name + str(item.cost))) + str(item.cost) + "g |")
+        print("_" * 28)
 
 
 ###################
@@ -544,7 +554,7 @@ nate = Merchant(
     no_weapon,
     True,
     False,
-    {"Longsword": longsword, "Greatsword": greatsword}, 
+    [longsword, greatsword], 
     alex
     )
 
@@ -554,7 +564,7 @@ bedroom1 = Room(
     "The bedroom agoining the the antechamber was equally as large and lavish with many beuitiful works of art hanging from its walls",
     "Bedroom(1)",
     {},
-    [pendant],
+    {},
     [],
     ""
     )
@@ -563,7 +573,7 @@ hallway = Room(
     "The hallway was also just as beutiful and lavish as the rest of the rooms had been, with huge windows alowing a flooding in of natural light.",
     "Hallway",
     {},
-    [],
+    {},
     [],
     ""
     )
@@ -572,7 +582,7 @@ antechamber = Room(
     "You walk into a large and brightly lit antechamber, filled with incredibly expensive looking decor adorning its interior",
     "Antechamber",
     {"east": bedroom1, "north": hallway},
-    [],
+    {},
     [],
     ""
     )
@@ -581,7 +591,7 @@ torture_chamber = Room(
     "WELCOME TO DEATH",
     "Torture Chamber",
     {},
-    [],
+    {},
     [],
     ""
     )
@@ -590,7 +600,7 @@ starting_room = Room(
     "You awake in what appears to be a dungeon", 
     "Starting Room",
     {"south": torture_chamber, "east": antechamber},
-    [longsword, greatsword, eye_of_aganom],
+    {"Longsword": longsword, "Greatsword": greatsword, "Eye of Aganom": eye_of_aganom},
     [nate, alex], 
     "There are many secrets in this room"
     )
@@ -599,20 +609,26 @@ test_room = Room(
     "This is a test room",
     "Test Room",
     {"Starting Room": starting_room},
-    [], 
+    {}, 
     [nate],
     ""
     )
 
+
+# Menu Instances
+inventory = Menu("----------INVENTORY---------")
+equipment = Menu("----------EQUIPMENT---------")
+merchant_inventory = Menu("----------INVENTORY---------")
+
 # Top level stuff
-UNDERLINES = "______________________"
+UNDERLINES = "______________________" # 22
 all_items = [butterfly, longsword, greatsword, no_weapon, sword, scythe, fists_of_fury, gnomes, your_hammer, eye_of_aganom, pendant, iron_helm, iron_chest, naked]
 all_rooms = [torture_chamber, starting_room, test_room]
+all_npcs  = [sean, alex, nate]
+
 
 player = Player("Sean", 100, [], 60, longsword, {"head": naked, "chest": naked, "legs": naked})
 
-# Menu Instances
-inventory = Menu("INVENTORY", player.inventory)
 
-game = Game(starting_room, all_rooms, all_items, player, {"Inventory" : inventory})
+game = Game(starting_room, all_rooms, all_items, all_npcs, player)
 game.start()
