@@ -1,7 +1,4 @@
-import sys
-import pdb
-import time
-import pickle
+import sys; import pdb; import time; import pickle
 
 
 ################
@@ -93,6 +90,7 @@ class Merchant(NPC):
     
     def buy(self, player):
         """Changed merchant inventory from a dictionary to a list, fix it accordingly"""
+        self.inventory = {item.name: item for item in self.inventory} # Until function is changed to handle a list
         while True:
             buying_input = input().split()
             verb = buying_input[0]
@@ -150,12 +148,12 @@ class Game():
 
     def print_room_messages(self):
         self.current_area.print_area_name()
-        print(UNDERLINES)
+        print("_" * 28)
         self.current_room.print_welcome()
         self.current_room.print_exits()
         self.current_room.print_items()
         self.current_room.print_npcs()
-        print(UNDERLINES)
+        print("_" * 28)
 
     def help_function(self):
         print("TIPS")
@@ -180,7 +178,7 @@ class Game():
             elif len(user_input_list) >= 3 and user_input_list[1] in possible_adjectives: # Temporary fix for interacting with NPCs, change to account for this in the previous statment later
                 self.handle_language(" ".join(user_input_list[2:]), user_input_list[0].lower(), user_input_list[1])
 
-            if user_input == 'i': 
+            if user_input == 'i': # prints player 
                 inventory.print_menu(self.player.inventory)                                                
 
             elif user_input == 'g':
@@ -222,8 +220,6 @@ class Game():
 
     def handle_language(self, noun, verb, adjective = ""):
         """Handle more than 1 word inputs, usually in the form of verb adjective(optional) noun"""
-        
-        room_npcs  = [npc.name for npc in self.current_room.npcs]
 
         if verb == 'take' and noun in self.current_room.items.keys():
             self.player.inventory.append(self.current_room.items[noun])
@@ -306,25 +302,24 @@ class Player():
 
     def npc_interactions(self):
         pass
- 
+
     def attack(self, npc_to_attack):
-        self.npc_to_attack = npc_to_attack
         if len(self.weapon.name) == 0:
             print("You have no weapon! You cannot attack")
         else:
-            self.npc_to_attack.health -= self.weapon.damage
-            if self.npc_to_attack.health <= 0:
-                print("You killed " + self.npc_to_attack.name)
+            npc_to_attack.health -= self.weapon.damage
+            if npc_to_attack.health <= 0:
+                print("You killed " + npc_to_attack.name)
             else:
                 print("You attacked " + npc_to_attack.name + " and did " + str(self.weapon.damage) + " damage.")
                 npc_to_attack.attack(self)
 
     def change_equipment(self, item_to_equip):
-        if type(self.items_dictionary()[item_to_equip]) is Weapon:
-            self.equipment["weapon"] = self.items_dictionary()[item_to_equip]
+        if type(self.items_dict[item_to_equip]) is Weapon:
+            self.equipment["weapon"] = self.items_dict[item_to_equip]
             print("You equipped " + item_to_equip)
-        elif type(self.items_dictionary()[item_to_equip]) is Armor:
-            self.equipment[self.items_dictionary()[item_to_equip].armor_type] = self.items_dictionary()[item_to_equip]
+        elif type(self.items_dict[item_to_equip]) is Armor:
+            self.equipment[self.items_dict[item_to_equip].armor_type] = self.items_dict[item_to_equip]
             print("You equipped " + item_to_equip)
         else:
             print("That item is not equipable.")
@@ -335,9 +330,9 @@ class Room():
     def __init__(self, welcome_message, name, exits, items, npcs, secret):
         self.name = name
         self.welcome_message = welcome_message
-        self.exits = {room.name: room for room in exits}
-        self.items = {item.name: item for item in items}
-        self.npcs = {npc.name: npc for npc in npcs}
+        self.exits  = {room.name: room for room in exits}
+        self.items  = {item.name: item for item in items}
+        self.npcs   = {npc.name: npc for npc in npcs}
         self.secret = secret
         
     def print_welcome(self):
@@ -353,13 +348,13 @@ class Room():
         if len(self.items) == 0:
              print("That are no items!")
         else:
-            print("The item(s) are: " + ", ".join(self.exits.keys()))
+            print("The item(s) are: " + ", ".join(self.items.keys()))
 
     def print_npcs(self):
         if len(self.npcs) == 0:
             print("There are no NPCs!")
         else:
-            print("The people in the room are: " + ", ".join(self.exits.keys()))
+            print("The people in the room are: " + ", ".join(self.npcs.keys()))
 
     def print_secret(self):
         if len(self.secret) == 0:
@@ -415,18 +410,21 @@ butterfly = Weapon(
     2,
     10
     )
+    
 longsword = Weapon(
     "Longsword", 
     "A longsword, simple, but dependable", 
     45, 
     12
     )
+    
 greatsword = Weapon(
     "Greatsword",
     "A massive blade that requires great strenght to lift. But can be used to crush your enemies into a pulp",
     89,
     20
     )
+    
 no_weapon = Weapon(
     "No Weapon", 
     "Does not possess a weapon. Does not belive in such tom foolery",
@@ -547,8 +545,17 @@ nate = Merchant(
     no_weapon,
     True,
     False,
-    {"Longsword": longsword, "Greatsword": greatsword},
+    [longsword, greatsword],
     alex
+    )
+    
+tanner = NPC(
+    "Tanner",
+    2,
+    "Uneducated manatees mating :)",
+    butterfly,
+    True,
+    False,
     )
 
 # Room Instances
@@ -556,7 +563,7 @@ nate = Merchant(
 fountain = Room(
     "This is a fountain",
     "Fountain",
-    {},
+    [],
     {},
     [],
     ""
@@ -627,7 +634,7 @@ gardens = Area(
 palace = Area(
     "Palace of Dreams",
     [starting_room, torture_chamber, antechamber, hallway, bedroom1],
-    {"Gardens": gardens}
+    {"Fountain": [gardens, fountain]}
     )
 
 
@@ -640,7 +647,7 @@ merchant_inventory = Menu("----------INVENTORY---------")
 UNDERLINES = "______________________" # 22
 all_items_list = [butterfly, longsword, greatsword, no_weapon, sword, scythe, fists_of_fury, gnomes, your_hammer, eye_of_aganom, pendant, iron_helm, iron_chest,naked]
 all_rooms_list = [torture_chamber, starting_room, test_room]
-all_npcs_list  = [sean, alex, nate]
+all_npcs_list  = [sean, alex, nate, tanner]
 all_items_dict = {item.name: item for item in all_items_list}
 all_rooms_dict = {room.name: room for room in all_rooms_list}
 all_npcs_dict  = {npc.name: npc for npc in all_npcs_list}
