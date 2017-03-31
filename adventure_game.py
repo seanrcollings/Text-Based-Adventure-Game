@@ -30,6 +30,8 @@ class SpecialItem():
             current_room.print_secret()
         elif self.special_property == "no effect":
             print("You blimey fool! Waving that around like it's a magic wand! No effect!")
+        elif self.special_property == "upgrade":
+            print("You use " + self.name + " to upgrade your weapon")
         else:
             print("This item is not usable in this way")
 
@@ -42,12 +44,6 @@ class Armor():
         self.defense = defense
         self.armor_type = armor_type
         self.cost = cost
-        
-
-    def calc_damage_reduction(self, weapon):
-        reduction_percent = weapon.damage * self.defense
-        new_damage = weapon.damage - reduction_percent
-        return new_damage
 
 
 
@@ -56,12 +52,11 @@ class Armor():
 ######################
 
 class NPC():
-    def __init__(self, name, health, greeting, weapon, friendly, pacifist):
+    def __init__(self, name, health, greeting, weapon, pacifist):
         self.name = name
         self.health = health
         self.greeting = greeting
         self.weapon = weapon
-        self.friendly = friendly
         self.pacifist = pacifist
 
     def print_greeting(self):
@@ -69,20 +64,20 @@ class NPC():
 
     def attack(self, npc_to_attack):
         if not self.pacifist:
+            print(self.name + "attack you doing " + str(self.weapon.damage) + " damage!")
             npc_to_attack.health -= self.weapon.damage
 
-    def interact_with_player(self):
+    def interact_with_player():
         pass
-        
+
 
 
 class Merchant(NPC):
-    def __init__(self, name, health, greeting, weapon, friendly, pacifist, inventory, guards):
+    def __init__(self, name, health, greeting, weapon, pacifist, inventory, guards):
         self.name = name
         self.health = health
         self.greeting = greeting
         self.weapon = weapon
-        self.friendly = friendly
         self.pacifist = pacifist
         self.inventory = inventory
         self.guards = guards
@@ -90,16 +85,15 @@ class Merchant(NPC):
     
     def buy(self, player):
         """Changed merchant inventory from a dictionary to a list, fix it accordingly"""
-        self.inventory = {item.name: item for item in self.inventory} # Until function is changed to handle a list
+        self.inventory = {item.name: item for item in self.inventory}
         while True:
-            buying_input = input().split()
+            buying_input = input('>>> ').split()
             verb = buying_input[0]
             noun = " ".join(buying_input[1:])
             if len(buying_input) != 2:
                 print("In order to buy, say 'buy (item)'")
                 print("In order to sell, say 'sell (item)'")
-            elif verb == "buy" and noun in [item.name for item in self.inventory]:
-                # TODO: error message if the merchant does not have the item
+            elif verb == "buy" and noun in self.inventory:
                 item = self.inventory[noun]
                 player.inventory.append(item)
                 player.gold -= item.cost
@@ -111,6 +105,8 @@ class Merchant(NPC):
                 player.gold += player.items_dictionary[noun].cost
                 print("You sold " + noun)
                 break
+            else:
+                print("Invalid input.\n In order to buy, say 'buy (item)'\n In order to sell, say 'sell (item)'")
 
     def attack(self, attacking_npc):
         if not self.pacifist:
@@ -120,11 +116,62 @@ class Merchant(NPC):
         self.print_greeting()
         merchant_inventory.print_menu(self.inventory)
         self.buy(player)
-  
+
+
+
+class Enemy():
+    def __init__(self, name, health, greeting, weapon, armor):
+        self.name = name
+        self.health = health
+        self.greeting = greeting
+        self.weapon = weapon
+        self.armor = armor
+        
+    def attack(self, npc_to_attack):
+        npc_to_attack.health -= self.weapon.damage
+        print(self.name + " attacked you doing " + str(self.weapon.damage) + " damage!")
+        npc_to_attack.attack(self)
+
+
+class Player():
+    def __init__(self, name, health, inventory, gold, equipment):
+        self.name = name
+        self.health = health
+        self.inventory = inventory
+        self.gold = gold
+        self.equipment = equipment
+        self.weapon = self.equipment["weapon"]
+        self.items_dict = {item.name: item for item in inventory}
+
+    def npc_interactions(self):
+        pass
+
+    def attack(self, npc_to_attack):
+        if len(self.weapon.name) == 0:
+            print("You have no weapon! You cannot attack")
+        else:
+            npc_to_attack.health -= self.weapon.damage
+            if npc_to_attack.health <= 0:
+                print("You killed " + npc_to_attack.name)
+            else:
+                print("You attacked " + npc_to_attack.name + " and did " + str(self.weapon.damage) + " damage.")
+                npc_to_attack.attack(self)
+
+    def change_equipment(self, item_to_equip):
+        if type(self.items_dict[item_to_equip]) is Weapon:
+            self.equipment["weapon"] = self.items_dict[item_to_equip]
+            print("You equipped " + item_to_equip)
+        elif type(self.items_dict[item_to_equip]) is Armor:
+            self.equipment[self.items_dict[item_to_equip].armor_type] = self.items_dict[item_to_equip]
+            print("You equipped " + item_to_equip)
+        else:
+            print("That item is not equipable.")
+
+
 
 class Game():
     def __init__(self, starting_room, starting_area, all_rooms, all_items, all_npcs, player):
-        """Main part of the game, handles primarily user input"""
+        """Main part of the game, handles primarily user input and it's interaction with the game world"""
         """Note: all_rooms, all_items, all_npcs have now been changed to dictionaries."""
         self.current_room = starting_room
         self.current_area = starting_area
@@ -139,7 +186,7 @@ class Game():
         self.handle_user_input()
 
     def slow_text(self, text): 
-    # Don't like how this works, need a way for it just to print everything at once if a button is pressed (Threading?)
+        """"Don't like how this works, need a way for it just to print everything at once if a button is pressed (Multi Threading?)"""
         for letter in text:
             sys.stdout.write(letter)
             sys.stdout.flush()
@@ -154,6 +201,7 @@ class Game():
         self.current_room.print_items()
         self.current_room.print_npcs()
         print("_" * 28)
+        self.check_for_enemy()
 
     def help_function(self):
         print("TIPS")
@@ -165,7 +213,7 @@ class Game():
     
     def handle_user_input(self):
         possible_adjectives = ["with"] # Temporary fix for entering handle_language twice with the 2 if statements below, working and the printing the fail state. 
-        while player.health > 0:
+        while self.player.health > 0:
             print("\n")
             user_input_list = input(">>> ").split()
             user_input = ''
@@ -178,11 +226,11 @@ class Game():
             elif len(user_input_list) >= 3 and user_input_list[1] in possible_adjectives: # Temporary fix for interacting with NPCs, change to account for this in the previous statment later
                 self.handle_language(" ".join(user_input_list[2:]), user_input_list[0].lower(), user_input_list[1])
 
-            if user_input == 'i': # prints player 
+            if user_input == 'i': # prints player inventory 
                 inventory.print_menu(self.player.inventory)                                                
 
             elif user_input == 'g':
-                print(str(self.player.gold))
+                print("You have: " + str(self.player.gold) + "gold.")
 
             elif user_input == 'back':
                 self.current_room = self.previous_rooms.pop()
@@ -224,9 +272,10 @@ class Game():
         if verb == 'take' and noun in self.current_room.items.keys():
             self.player.inventory.append(self.current_room.items[noun])
             print("You took " + noun)
+            print(self.player.items_dict)
         
         elif verb == 'interact' and adjective == 'with' and noun in self.current_room.npcs.keys():
-            self.all_npcs[noun].interact_with_player(player)
+            self.all_npcs[noun].interact_with_player(self.player)
         
         elif verb == 'go' and noun in self.current_room.exits.keys():
             self.previous_rooms.append(self.current_room)
@@ -237,8 +286,7 @@ class Game():
              self.player.change_equipment(noun)
 
         elif verb == 'attack' and noun in self.current_room.npcs.keys():
-            npc_to_attack = self.current_room.npcs[noun]
-            self.player.attack(npc_to_attack)
+            self.player.attack(self.current_room.npcs[noun])
     
         elif verb == 'use' and noun in self.player.items_dict.keys():
             self.player.items_dict[noun].special_property_use(self.current_room)
@@ -254,6 +302,13 @@ class Game():
 
         else:
             print("Invalid option!(In handle_language)")
+
+
+    def check_for_enemy(self):
+        for name, npc in self.current_room.npcs.items():
+            if type(npc) == Enemy:
+                npc.attack(self.player)
+
 
     def start(self):
         try:
@@ -274,7 +329,7 @@ class Game():
             self.intro()
 
             
-    def intro(self, save_inventory = ["Fists of Fury"]):
+    def intro(self, save_inventory = []):
         self.save_inventory = save_inventory   
         print("TIPS")
         print("1. Press i will allow you to view your inventory")
@@ -288,42 +343,6 @@ class Game():
         else:
             print("I don't believe you know how to work a computer!")
 
-
-
-class Player():
-    def __init__(self, name, health, inventory, gold, equipment):
-        self.name = name
-        self.health = health
-        self.inventory = inventory
-        self.gold = gold
-        self.equipment = equipment
-        self.weapon = self.equipment["weapon"]
-        self.items_dict = {item.name: item for item in inventory}
-
-    def npc_interactions(self):
-        pass
-
-    def attack(self, npc_to_attack):
-        if len(self.weapon.name) == 0:
-            print("You have no weapon! You cannot attack")
-        else:
-            npc_to_attack.health -= self.weapon.damage
-            if npc_to_attack.health <= 0:
-                print("You killed " + npc_to_attack.name)
-            else:
-                print("You attacked " + npc_to_attack.name + " and did " + str(self.weapon.damage) + " damage.")
-                npc_to_attack.attack(self)
-
-    def change_equipment(self, item_to_equip):
-        if type(self.items_dict[item_to_equip]) is Weapon:
-            self.equipment["weapon"] = self.items_dict[item_to_equip]
-            print("You equipped " + item_to_equip)
-        elif type(self.items_dict[item_to_equip]) is Armor:
-            self.equipment[self.items_dict[item_to_equip].armor_type] = self.items_dict[item_to_equip]
-            print("You equipped " + item_to_equip)
-        else:
-            print("That item is not equipable.")
-        
 
 
 class Room():
@@ -361,6 +380,7 @@ class Room():
             print("No secrets to be found")
         else:
             print(self.secret)
+
 
 
 class Area():
@@ -489,7 +509,7 @@ pendant = SpecialItem(
 iron_helm = Armor(
     "Iron Helmet",
     "A simple, but dependable Iron Helmet",
-    .25,
+    .05,
     "head",
     25
     )      
@@ -497,7 +517,7 @@ iron_helm = Armor(
 iron_chest = Armor(
     "Iron Chestplate",
     "A simple, but dependable Iron Chestplate",
-    .30,
+    .10,
     "chest",
     25
     )
@@ -505,7 +525,7 @@ iron_chest = Armor(
 iron_legs = Armor(
     "Iron Leggings",
     "Simple, but dependable Iron Legging",
-    .25,
+    .05,
     "leg",
     25
     )
@@ -525,7 +545,6 @@ sean = NPC(
     100,
     "Hello Traveller",
     longsword,
-    True,
     False
     )
     
@@ -534,7 +553,6 @@ alex = NPC(
     100,
     "I'm a butt",
     fists_of_fury,
-    True,
     False
     )
     
@@ -543,7 +561,6 @@ nate = Merchant(
     100,
     "See anything you like?",
     no_weapon,
-    True,
     False,
     [longsword, greatsword],
     alex
@@ -554,8 +571,23 @@ tanner = NPC(
     2,
     "Uneducated manatees mating :)",
     butterfly,
-    True,
     False,
+    )
+
+oscar = NPC(
+    "Oscar",
+    1,
+    "Thou who art undead art chosen. And in thine exedous from the Undead Asylum, make pilgrimige to the land of the ancient lords. If thou ringest the bells of awakening, the fate of the undead thou shalt know.",
+    longsword,
+    True,
+    )
+
+hollow = Enemy(
+    "Hollow",
+    64,
+    "Gaaaaaaahhh",
+    butterfly,
+    {"head": naked, "chest": naked, "legs": naked}
     )
 
 # Room Instances
@@ -591,7 +623,7 @@ antechamber = Room(
     "Antechamber",
     [bedroom1, hallway],
     [],
-    [],
+    [hollow],
     ""
     )
 
@@ -647,14 +679,12 @@ merchant_inventory = Menu("----------INVENTORY---------")
 UNDERLINES = "______________________" # 22
 all_items_list = [butterfly, longsword, greatsword, no_weapon, sword, scythe, fists_of_fury, gnomes, your_hammer, eye_of_aganom, pendant, iron_helm, iron_chest,naked]
 all_rooms_list = [torture_chamber, starting_room, test_room]
-all_npcs_list  = [sean, alex, nate, tanner]
+all_npcs_list  = [sean, alex, nate, tanner, oscar, hollow]
 all_items_dict = {item.name: item for item in all_items_list}
 all_rooms_dict = {room.name: room for room in all_rooms_list}
 all_npcs_dict  = {npc.name: npc for npc in all_npcs_list}
 
 
 player = Player("Sean", 100, [], 60, {"weapon": longsword, "head": naked, "chest": naked, "legs": naked})
-
-
 game = Game(starting_room, palace, all_rooms_dict, all_items_dict, all_npcs_dict, player)
 game.start()
