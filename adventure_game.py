@@ -1,181 +1,4 @@
-import sys; import pdb; import time; import pickle; import os; from enemy_images import monster_images
-
-
-################
-# ITEM CLASSES #
-################
-
-class Weapon():
-    def __init__(self, name, description, damage, cost):
-        self.name = name
-        self.description = description
-        self.damage = damage
-        self.cost = cost
-
-
-    """def use_wpn_art(self, npc_to_attack):
-        self.damage *= 2"""  
-
-
-class SpecialItem():
-    def __init__(self, name, description, damage, special_property, special_val, cost):
-        self.name = name
-        self.description = description
-        self.damage = damage
-        self.special_property = special_property
-        self.special_val = special_val
-        self.cost = cost
-
-    def special_property_use(self, current_room):
-        if self.special_property == "reveal":
-            current_room.print_secret()
-        elif self.special_property == "no effect":
-            print("You blimey fool! Waving that around like it's a magic wand! No effect!")
-        elif self.special_property == "upgrade":
-            print("You use " + self.name + " to upgrade your weapon")
-        elif self.special_property == "heal":
-            print("You use " + self.name + " to heal yourself by " + str(special_val))
-            # actually heal the player here
-        else:
-            print("This item is not usable in this way")
-
-
-
-class Armor():
-    def __init__(self, name, description, defense, armor_type, cost):
-        self.name = name
-        self.description = description
-        self.defense = defense
-        self.armor_type = armor_type
-        self.cost = cost
-
-    def calc_armor_def(self, weapon_damage):
-        return weapon_damage - self.defense
-
-
-
-######################
-# CLASSES FOR PEOPLE #
-######################
-
-class NPC():
-    def __init__(self, name, health, greeting, weapon, pacifist):
-        self.name = name
-        self.health = health
-        self.greeting = greeting
-        self.weapon = weapon
-        self.pacifist = pacifist
-
-    def print_greeting(self):
-        print(self.greeting)
-
-    def attack(self, npc_to_attack):
-        if not self.pacifist:
-            print(self.name + " attacks you doing " + str(self.weapon.damage) + " damage!")
-            npc_to_attack.health -= self.weapon.damage
-
-    def interact_with_player():
-        pass
-
-
-
-class Merchant(NPC):
-    def __init__(self, name, health, greeting, weapon, pacifist, inventory, guards):
-        self.name = name
-        self.health = health
-        self.greeting = greeting
-        self.weapon = weapon
-        self.pacifist = pacifist
-        self.inventory = inventory
-        self.guards = guards
-
-    
-    def buy(self, player):
-        """Changed merchant inventory from a dictionary to a list, fix it accordingly"""
-        self.inventory = {item.name: item for item in self.inventory}
-        while True:
-            buying_input = input('>>> ').split()
-            verb = buying_input[0]
-            noun = " ".join(buying_input[1:])
-            if len(buying_input) != 2:
-                print("In order to buy, say 'buy (item)'")
-                print("In order to sell, say 'sell (item)'")
-            elif verb == "buy" and noun in self.inventory:
-                item = self.inventory[noun]
-                player.inventory.append(item)
-                player.gold -= item.cost
-                del self.inventory[noun]
-                print("You bought " + noun)
-                break
-            elif verb == "sell" and noun in player.items_dictionary().keys():
-                player.inventory.remove(player.items_dictionary[noun])
-                player.gold += player.items_dictionary[noun].cost
-                print("You sold " + noun)
-                break
-            else:
-                print("Invalid input.\n In order to buy, say 'buy (item)'\n In order to sell, say 'sell (item)'")
-
-    def attack(self, attacking_npc):
-        if not self.pacifist:
-            self.guards.attack(attacking_npc)
-
-    def interact_with_player(self, player):
-        self.print_greeting()
-        merchant_inventory.print_menu(self.inventory)
-        self.buy(player)
-
-
-
-class Enemy():
-    def __init__(self, name, health, greeting, image, weapon, armor):
-        self.name = name
-        self.health = health
-        self.greeting = greeting
-        self.image = image
-        self.weapon = weapon
-        self.armor = armor
-        
-    def attack(self, npc_to_attack):
-        if self.health > 0:
-            npc_to_attack.health -= self.weapon.damage
-            print(self.name + " attacked you doing " + str(self.weapon.damage) + " damage!")
-            npc_to_attack.attack(self)
-
-
-class Player():
-    def __init__(self, name, health, inventory, gold, equipment):
-        self.name = name
-        self.health = health
-        self.inventory = inventory
-        self.gold = gold
-        self.equipment = equipment
-        self.weapon = self.equipment["weapon"]
-        self.items_dict = {item.name: item for item in inventory}
-
-    def npc_interactions(self):
-        pass
-
-    def attack(self, npc_to_attack):
-        if len(self.weapon.name) == 0:
-            print("You have no weapon! You cannot attack")
-        elif self.health > 0:
-            npc_to_attack.health -= self.weapon.damage
-            if npc_to_attack.health <= 0:
-                print("You killed " + npc_to_attack.name)
-            else:
-                print("You attacked " + npc_to_attack.name + " and did " + str(self.weapon.damage) + " damage.")
-                npc_to_attack.attack(self)
-
-    def change_equipment(self, item_to_equip):
-        if type(self.items_dict[item_to_equip]) is Weapon:
-            self.equipment["weapon"] = self.items_dict[item_to_equip]
-            print("You equipped " + item_to_equip)
-        elif type(self.items_dict[item_to_equip]) is Armor:
-            self.equipment[self.items_dict[item_to_equip].armor_type] = self.items_dict[item_to_equip]
-            print("You equipped " + item_to_equip)
-        else:
-            print("That item is not equipable.")
-
+import sys; import pdb; import time; import pickle; import os; import random; from enemy_images import monster_images
 
 
 class Game():
@@ -203,6 +26,7 @@ class Game():
         print('\n')
 
     def print_room_messages(self):
+        self.check_for_enemy()
         self.current_area.print_area_name()
         print("_" * 28)
         self.current_room.print_welcome()
@@ -210,7 +34,6 @@ class Game():
         self.current_room.print_items()
         self.current_room.print_npcs()
         print("_" * 28)
-        self.check_for_enemy()
 
     def help_function(self):
         print("TIPS")
@@ -291,7 +114,7 @@ class Game():
             self.current_room = self.current_room.exits[noun]
             self.print_room_messages()
 
-        elif verb == 'equip' and noun in self.player.items_dict.keys():
+        elif verb == 'equip':
              self.player.change_equipment(noun)
 
         elif verb == 'attack' and noun in self.current_room.npcs.keys():
@@ -315,21 +138,8 @@ class Game():
 
     def check_for_enemy(self):
         for name, npc in self.current_room.npcs.items():
-            if type(npc) == Enemy:
-                self.combat(npc)
-
-    def combat(self, opponent, player_turn = True): # This is combat is only based around the player vs a npc
-        print("A " + opponent.name + " appears")
-        while self.player.health > 0 and opponent.health > 0:
-            os.system('clear')
-            print(opponent.image)
-            combat_panel.print_menu(self.player.inventory)
-            while player_turn:
-                print("What will you do?")
-                user_input = input('>>> ')
-                
-            opponent.attack(self.player)
-            player_turn = True
+            if type(npc) == Enemy and npc.health > 0:
+                combat.active_combat(npc, self.player)
 
     def check_save(self):
         """Checks to see if there is a save in the save file, if there is, asks the player if they want to load it. If they don't or there isn't a save, it loads the intro"""
@@ -365,6 +175,220 @@ class Game():
         else:
             print("I don't believe you know how to work a computer!")
 
+
+################
+# ITEM CLASSES #
+################
+
+class Weapon():
+    def __init__(self, name, description, attacks, cost):
+        self.name = name
+        self.description = description
+        self.attacks = attacks
+        self.cost = cost
+
+
+
+class SpecialItem():
+    def __init__(self, name, description, damage, special_property, special_val, cost):
+        self.name = name
+        self.description = description
+        self.damage = damage
+        self.special_property = special_property
+        self.special_val = special_val
+        self.cost = cost
+
+    def special_property_use(self, current_room):
+        if self.special_property == "reveal":
+            current_room.print_secret()
+        elif self.special_property == "no effect":
+            print("You blimey fool! Waving that around like it's a magic wand! No effect!")
+        elif self.special_property == "upgrade":
+            print("You use " + self.name + " to upgrade your weapon")
+        elif self.special_property == "heal":
+            print("You use " + self.name + " to heal yourself by " + str(special_val))
+            # actually heal the player here
+        else:
+            print("This item is not usable in this way")
+
+
+
+class Armor():
+    def __init__(self, name, description, defense, armor_type, cost):
+        self.name = name
+        self.description = description
+        self.defense = defense
+        self.armor_type = armor_type
+        self.cost = cost
+
+    def calc_armor_def(self, weapon_damage):
+        return weapon_damage - self.defense
+
+
+
+######################
+# CLASSES FOR PEOPLE #
+######################
+
+class NPC():
+    def __init__(self, name, health, greeting, weapon, pacifist):
+        self.name = name
+        self.health = health
+        self.greeting = greeting
+        self.weapon = weapon
+        self.pacifist = pacifist
+
+    def print_greeting(self):
+        print(self.greeting)
+
+    def attack(self, npc_to_attack):
+        if not self.pacifist:
+            attack_list = [key for key in self.weapon.attacks]
+            if self.health > 0:
+                queue_attack = self.weapon.attacks[random.choice(attack_list)]
+                npc_to_attack.health -= queue_attack
+                print(self.name + " attacked you doing " + queue_attack + " damage!")
+
+    def interact_with_player():
+        pass
+
+
+
+class Merchant(NPC):
+    def __init__(self, name, health, greeting, weapon, pacifist, inventory, guards):
+        self.name = name
+        self.health = health
+        self.greeting = greeting
+        self.weapon = weapon
+        self.pacifist = pacifist
+        self.inventory = inventory
+        self.guards = guards
+
+    
+    def buy(self, player):
+        """Changed merchant inventory from a dictionary to a list, fix it accordingly"""
+        self.inventory = {item.name: item for item in self.inventory}
+        while True:
+            buying_input = input('>>> ').split()
+            verb = buying_input[0]
+            noun = " ".join(buying_input[1:])
+            if len(buying_input) != 2:
+                print("In order to buy, say 'buy (item)'")
+                print("In order to sell, say 'sell (item)'")
+            elif verb == "buy" and noun in self.inventory:
+                item = self.inventory[noun]
+                player.inventory.append(item)
+                player.gold -= item.cost
+                del self.inventory[noun]
+                print("You bought " + noun)
+                break
+            elif verb == "sell" and noun in player.items_dictionary().keys():
+                player.inventory.remove(player.items_dictionary[noun])
+                player.gold += player.items_dictionary[noun].cost
+                print("You sold " + noun)
+                break
+            else:
+                print("Invalid input.\n In order to buy, say 'buy (item)'\n In order to sell, say 'sell (item)'")
+
+    def attack(self, attacking_npc):
+        if not self.pacifist:
+            self.guards.attack(attacking_npc)
+
+    def interact_with_player(self, player):
+        self.print_greeting()
+        merchant_inventory.print_menu(self.inventory)
+        self.buy(player)
+
+
+
+class Enemy():
+    def __init__(self, name, health, greeting, image, weapon, armor):
+        self.name = name
+        self.health = health
+        self.greeting = greeting
+        self.image = image
+        self.weapon = weapon
+        self.armor = armor
+        
+    def attack(self, npc_to_attack):
+        attack_list = [key for key in self.weapon.attacks]
+        if self.health > 0:
+            queue_attack = self.weapon.attacks[random.choice(attack_list)]
+            npc_to_attack.health -= queue_attack
+            print(self.name + " attacked you doing " + str(queue_attack) + " damage!")
+            
+
+
+class Player():
+    def __init__(self, name, health, inventory, gold, equipment):
+        self.name = name
+        self.health = health
+        self.inventory = inventory
+        self.gold = gold
+        self.equipment = equipment
+        self.weapon = self.equipment["weapon"]
+        self.items_dict = {item.name: item for item in self.inventory}
+
+    def npc_interactions(self):
+        pass
+
+    def attack(self, npc_to_attack, attack):
+        if len(self.weapon.name) == 0:
+            print("You have no weapon! You cannot attack")
+        elif self.health > 0:
+            npc_to_attack.health -= self.weapon.attacks[attack]
+            if npc_to_attack.health <= 0:
+                print("You killed " + npc_to_attack.name)
+            else:
+                print("You attacked " + npc_to_attack.name + " and did " + str(self.weapon.attacks[attack]) + " damage.")
+
+    def change_equipment(self, item_to_equip):
+        self.items_dict = {item.name: item for item in self.inventory}
+        if type(self.items_dict[item_to_equip]) is Weapon:
+            pdb.set_trace()
+            self.equipment['weapon'] = self.items_dict[item_to_equip]
+            self.weapon = self.equipment['weapon']
+            print("You equipped " + item_to_equip)
+        elif type(self.items_dict[item_to_equip]) is Armor:
+            self.equipment[self.items_dict[item_to_equip].armor_type] = self.items_dict[item_to_equip]
+            print("You equipped " + item_to_equip)
+        else:
+            print("That item is not equipable.")
+
+
+
+class Combat():
+    """Turn based rpg style combat"""
+    """ Note: Place this inside game class or leave it here?"""
+    def active_combat(self, opponent, player, player_turn = True ):
+        print("A " + opponent.name + " appears")
+        while player.health > 0 and opponent.health > 0:
+            time.sleep(1)
+            os.system('clear')
+            print(opponent.image)
+            print(opponent.name + "'s health : " + "[+]" * (int(opponent.health / 5)))
+            print("Your health : " + "[+]" * (int(player.health / 5)))
+            self.print_combat_panel(player)
+            while player_turn:
+                print("What will you do?")
+                user_input = input('>>> ')
+                if user_input in player.weapon.attacks.keys():
+                    player.attack(opponent, user_input)
+                    player_turn = False
+                else:
+                    print("Invalid option (in active_combat)")                
+            opponent.attack(player)
+            player_turn = True
+
+    def print_combat_panel(self, player):
+        print("_" * 28)
+        print("-----------COMBAT-----------")
+        print("_" * 28)
+        print("ATTACK----------------DAMAGE") 
+        pdb.set_trace()
+        for key, val in player.weapon.attacks.items():
+            print(key + " " * (26 - len(key + str(val))) + str(val) + " |")
+        print("_" * 28)
 
 
 class Room():
@@ -448,64 +472,30 @@ class Menu():
 # name, description, damage, cost
 butterfly = Weapon(
     "Butterfly Sword",
-    "A butterfly mounted to the hilt of the sword, whowever thought this was a bright idea must be quite mad. Why are you carrying it around? Maybe you're mad", 
-    2,
+    "A butterfly mounted to the hilt of the sword, whowever thought this was a bright idea must be quite mad. Why are you carrying it around? Perhaps you're mad", 
+    {"Side Swipe": 2},
     10
     )
     
 longsword = Weapon(
     "Longsword", 
     "A longsword, simple, but dependable", 
-    45, 
+    {"Side Swipe": 15, "Uppercut": 25}, 
     12
     )
     
 greatsword = Weapon(
     "Greatsword",
     "A massive blade that requires great strenght to lift. But can be used to crush your enemies into a pulp",
-    89,
+    {"Crushing Blow": 100},
     20
     )
     
 no_weapon = Weapon(
     "No Weapon", 
     "Does not possess a weapon. Does not belive in such tom foolery",
-    0,
+    {},
     0
-    )
-
-sword = Weapon("Sword",
-    "A plain sword, made of steel in a human forge. A decent overall weapon.",
-    40,
-    10
-    )
-    
-scythe = Weapon(
-    "Scythe",
-    "A farming tool, sharpened to extreme measures. Useful for trapping an enemy's weapon.",
-    30,
-    11
-    )
-    
-fists_of_fury = Weapon(
-    "Fists of Fury",
-    "LISTEN UP, YOU PANSY. USE YOUR FISTS. PUNCH THEM INTO SUBMISSION!!!",
-    9001,
-    17
-    )
-    
-gnomes = Weapon(
-    "Infinite throwing gnomes",
-    "You're a horrible person if you use this",
-    100,
-    10
-    )
-    
-your_hammer = Weapon(
-    "Your pitiful hammer",
-    "You can't do anything with this, no wonder the ladies laugh at you.",
-    -5,
-    5
     )
 
 # Special Item Instances
@@ -576,7 +566,7 @@ alex = NPC(
     "Alex",
     100,
     "I'm a butt",
-    fists_of_fury,
+    butterfly,
     False
     )
     
@@ -674,7 +664,7 @@ starting_room = Room(
     "You awake in what appears to be a dungeon", 
     "Starting Room",
     [torture_chamber, antechamber],
-    [longsword],
+    [longsword, greatsword],
     [nate, alex], 
     "There are many secrets in this room"
     )
@@ -712,14 +702,14 @@ combat_panel = Menu("")
 
 # Top level stuff
 UNDERLINES = "______________________" # 22
-all_items_list = [butterfly, longsword, greatsword, no_weapon, sword, scythe, fists_of_fury, gnomes, your_hammer, eye_of_aganom, pendant, iron_helm, iron_chest,naked]
+all_items_list = [butterfly, longsword, greatsword, no_weapon, eye_of_aganom, pendant, iron_helm, iron_chest, naked]
 all_rooms_list = [torture_chamber, starting_room, test_room]
 all_npcs_list  = [sean, alex, nate, tanner, oscar, hollow]
 all_items_dict = {item.name: item for item in all_items_list}
 all_rooms_dict = {room.name: room for room in all_rooms_list}
 all_npcs_dict  = {npc.name: npc for npc in all_npcs_list}
 
-
+combat = Combat()
 player = Player("Sean", 100, [], 60, {"weapon": longsword, "head": naked, "chest": naked, "legs": naked})
 game = Game(starting_room, palace, all_rooms_dict, all_items_dict, all_npcs_dict, player)
 game.check_save()
