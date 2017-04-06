@@ -1,0 +1,1 @@
+from .enemy_images import skeleton

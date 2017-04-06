@@ -1,4 +1,4 @@
-import sys; import pdb; import time; import pickle
+import sys; import pdb; import time; import pickle; import os; from enemy_images import monster_images
 
 
 ################
@@ -18,11 +18,12 @@ class Weapon():
 
 
 class SpecialItem():
-    def __init__(self, name, description, damage, special_property, cost):
+    def __init__(self, name, description, damage, special_property, special_val, cost):
         self.name = name
         self.description = description
         self.damage = damage
         self.special_property = special_property
+        self.special_val = special_val
         self.cost = cost
 
     def special_property_use(self, current_room):
@@ -32,6 +33,9 @@ class SpecialItem():
             print("You blimey fool! Waving that around like it's a magic wand! No effect!")
         elif self.special_property == "upgrade":
             print("You use " + self.name + " to upgrade your weapon")
+        elif self.special_property == "heal":
+            print("You use " + self.name + " to heal yourself by " + str(special_val))
+            # actually heal the player here
         else:
             print("This item is not usable in this way")
 
@@ -44,6 +48,9 @@ class Armor():
         self.defense = defense
         self.armor_type = armor_type
         self.cost = cost
+
+    def calc_armor_def(self, weapon_damage):
+        return weapon_damage - self.defense
 
 
 
@@ -64,7 +71,7 @@ class NPC():
 
     def attack(self, npc_to_attack):
         if not self.pacifist:
-            print(self.name + "attack you doing " + str(self.weapon.damage) + " damage!")
+            print(self.name + " attacks you doing " + str(self.weapon.damage) + " damage!")
             npc_to_attack.health -= self.weapon.damage
 
     def interact_with_player():
@@ -120,17 +127,19 @@ class Merchant(NPC):
 
 
 class Enemy():
-    def __init__(self, name, health, greeting, weapon, armor):
+    def __init__(self, name, health, greeting, image, weapon, armor):
         self.name = name
         self.health = health
         self.greeting = greeting
+        self.image = image
         self.weapon = weapon
         self.armor = armor
         
     def attack(self, npc_to_attack):
-        npc_to_attack.health -= self.weapon.damage
-        print(self.name + " attacked you doing " + str(self.weapon.damage) + " damage!")
-        npc_to_attack.attack(self)
+        if self.health > 0:
+            npc_to_attack.health -= self.weapon.damage
+            print(self.name + " attacked you doing " + str(self.weapon.damage) + " damage!")
+            npc_to_attack.attack(self)
 
 
 class Player():
@@ -149,7 +158,7 @@ class Player():
     def attack(self, npc_to_attack):
         if len(self.weapon.name) == 0:
             print("You have no weapon! You cannot attack")
-        else:
+        elif self.health > 0:
             npc_to_attack.health -= self.weapon.damage
             if npc_to_attack.health <= 0:
                 print("You killed " + npc_to_attack.name)
@@ -307,10 +316,23 @@ class Game():
     def check_for_enemy(self):
         for name, npc in self.current_room.npcs.items():
             if type(npc) == Enemy:
-                npc.attack(self.player)
+                self.combat(npc)
 
+    def combat(self, opponent, player_turn = True): # This is combat is only based around the player vs a npc
+        print("A " + opponent.name + " appears")
+        while self.player.health > 0 and opponent.health > 0:
+            os.system('clear')
+            print(opponent.image)
+            combat_panel.print_menu(self.player.inventory)
+            while player_turn:
+                print("What will you do?")
+                user_input = input('>>> ')
+                
+            opponent.attack(self.player)
+            player_turn = True
 
-    def start(self):
+    def check_save(self):
+        """Checks to see if there is a save in the save file, if there is, asks the player if they want to load it. If they don't or there isn't a save, it loads the intro"""
         try:
             file = open('save.pkl', 'rb')
             load_file = pickle.load(file)
@@ -493,6 +515,7 @@ eye_of_aganom = SpecialItem(
     "The Eye of Aganom is a powerful relic used to reveal secrets about a location.",
     0,
     "reveal",
+    None,
     90
     )       
 
@@ -501,6 +524,7 @@ pendant = SpecialItem(
     "A simple pendant with no effect. Even so, pleasant memories are crucial to survival on arduous journeys.",
     0,
     "no effect",
+    None,
     99999
     )  
 
@@ -508,31 +532,31 @@ pendant = SpecialItem(
 # name, description, defense, piece, cost
 iron_helm = Armor(
     "Iron Helmet",
-    "A simple, but dependable Iron Helmet",
-    .05,
+    "A simple, but dependable Iron Helmet - Reduces damage taken by 5",
+    5,
     "head",
     25
     )      
 
 iron_chest = Armor(
     "Iron Chestplate",
-    "A simple, but dependable Iron Chestplate",
-    .10,
+    "A simple, but dependable Iron Chestplate - Reduces damage taken by 10",
+    10,
     "chest",
     25
     )
 
 iron_legs = Armor(
     "Iron Leggings",
-    "Simple, but dependable Iron Legging",
-    .05,
+    "Simple, but dependable Iron Legging - Reduces damage taken by 5",
+    5,
     "leg",
     25
     )
 
 naked = Armor(
     "Naked",
-    "",
+    "You wear nothing but a loincloth",
     0,
     "",
     0
@@ -586,7 +610,17 @@ hollow = Enemy(
     "Hollow",
     64,
     "Gaaaaaaahhh",
+    None,
     butterfly,
+    {"head": naked, "chest": naked, "legs": naked}
+    )
+
+sword_skeleton = Enemy(
+    "Sword Skelton",
+    100,
+    "Nehahahahaha",
+    monster_images["sword skeleton"],
+    longsword,
     {"head": naked, "chest": naked, "legs": naked}
     )
 
@@ -632,7 +666,7 @@ torture_chamber = Room(
     "Torture Chamber",
     [],
     [],
-    [],
+    [sword_skeleton],
     ""
     )
 
@@ -674,6 +708,7 @@ palace = Area(
 inventory = Menu("----------INVENTORY---------")
 equipment = Menu("----------EQUIPMENT---------")
 merchant_inventory = Menu("----------INVENTORY---------")
+combat_panel = Menu("")
 
 # Top level stuff
 UNDERLINES = "______________________" # 22
@@ -687,4 +722,4 @@ all_npcs_dict  = {npc.name: npc for npc in all_npcs_list}
 
 player = Player("Sean", 100, [], 60, {"weapon": longsword, "head": naked, "chest": naked, "legs": naked})
 game = Game(starting_room, palace, all_rooms_dict, all_items_dict, all_npcs_dict, player)
-game.start()
+game.check_save()
