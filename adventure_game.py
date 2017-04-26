@@ -345,7 +345,6 @@ class Player():
     def change_equipment(self, item_to_equip):
         self.items_dict = {item.name: item for item in self.inventory}
         if type(self.items_dict[item_to_equip]) is Weapon:
-            pdb.set_trace()
             self.equipment['weapon'] = self.items_dict[item_to_equip]
             self.weapon = self.equipment['weapon']
             print("You equipped " + item_to_equip)
@@ -375,6 +374,8 @@ class Combat():
                 if user_input in player.weapon.attacks.keys():
                     player.attack(opponent, user_input)
                     player_turn = False
+                elif user_input == 'i':
+                    inventory.print_menu(player.inventory)
                 else:
                     print("Invalid option (in active_combat)")                
             opponent.attack(player)
@@ -385,7 +386,6 @@ class Combat():
         print("-----------COMBAT-----------")
         print("_" * 28)
         print("ATTACK----------------DAMAGE") 
-        pdb.set_trace()
         for key, val in player.weapon.attacks.items():
             print(key + " " * (26 - len(key + str(val))) + str(val) + " |")
         print("_" * 28)
