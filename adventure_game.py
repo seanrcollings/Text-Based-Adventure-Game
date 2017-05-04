@@ -123,7 +123,7 @@ class Game():
             self.player.attack(self.current_room.npcs[noun])
     
         elif verb == 'use' and noun in self.player.items_dict.keys():
-            self.player.items_dict[noun].special_property_use(self.current_room)
+            self.player.items_dict[noun].special_property_use(self.current_room, player)
 
         elif verb == 'check' and noun in self.player.items_dict:
             print(self.player.items_dict[noun].description)
@@ -162,7 +162,6 @@ class Game():
         except EOFError:
             self.intro()
 
-            
     def intro(self, save_inventory = []):
         self.save_inventory = save_inventory
         self.help_function()
@@ -173,6 +172,7 @@ class Game():
             self.game_loop()
         else:
             print("I don't believe you know how to work a computer!")
+
 
 
 ################
@@ -199,7 +199,7 @@ class SpecialItem():
         self.cost = cost
         all_items_list.append(self)
 
-    def special_property_use(self, current_room):
+    def special_property_use(self, player, current_room = None):
         if self.special_property == "reveal":
             current_room.print_secret()
         elif self.special_property == "no effect":
@@ -208,7 +208,7 @@ class SpecialItem():
             print("You use " + self.name + " to upgrade your weapon")
         elif self.special_property == "heal":
             print("You use " + self.name + " to heal yourself by " + str(self.special_val))
-            # actually heal the player here
+            player.health += self.special_val
         else:
             print("This item is not usable in this way")
 
@@ -257,11 +257,7 @@ class NPC():
 
 class Merchant(NPC):
     def __init__(self, name, health, greeting, weapon, pacifist, inventory, guards):
-        self.name = name
-        self.health = health
-        self.greeting = greeting
-        self.weapon = weapon
-        self.pacifist = pacifist
+        Merchant.__init__(name, health, greeting, weapon, pacifist)
         self.inventory = inventory
         self.guards = guards
         all_npcs_list.append(self)
@@ -334,9 +330,6 @@ class Player():
         self.weapon = self.equipment["weapon"]
         self.items_dict = {item.name: item for item in self.inventory}
 
-    def npc_interactions(self):
-        pass
-
     def attack(self, npc_to_attack, attack):
         if len(self.weapon.name) == 0:
             print("You have no weapon! You cannot attack")
@@ -371,46 +364,18 @@ class Player():
             print("_" * 28)
         else:
             print("That item is not equipable.")
+        
+    def get_item(self, item):
+        item_dict = {item.name: item for item in self.inventory}
+        if item in item_dict:
+            return item_dict[item]
+        else:
+            return False
+        
 
 
 
-<<<<<<< HEAD
-class Combat():
-    """Turn based rpg style combat"""
-    """ Note: Place this inside game class or leave it here?"""
-    def active_combat(self, opponent, player, player_turn = True ):
-        print("A " + opponent.name + " appears")
-        while player.health > 0 and opponent.health > 0:
-            time.sleep(1)
-            os.system('clear')
-            print(opponent.image)
-            print(opponent.name + "'s health : " + "[+]" * (int(opponent.health / 5)))
-            print("Your health : " + "[+]" * (int(player.health / 5)))
-            self.print_combat_panel(player)
-            while player_turn:
-                print("What will you do?")
-                user_input = input('>>> ')
-                if user_input in player.weapon.attacks.keys():
-                    player.attack(opponent, user_input)
-                    player_turn = False
-                elif user_input == 'i':
-                    inventory.print_menu(player.inventory)
-                else:
-                    print("Invalid option (in active_combat)")                
-            opponent.attack(player)
-            player_turn = True
 
-    def print_combat_panel(self, player):
-        print("_" * 28)
-        print("-----------COMBAT-----------")
-        print("_" * 28)
-        print("ATTACK----------------DAMAGE") 
-        for key, val in player.weapon.attacks.items():
-            print(key + " " * (26 - len(key + str(val))) + str(val) + " |")
-        print("_" * 28)
-=======
-
->>>>>>> 5471398e901802e40b8efd94fabc3a016b5fb4aa
 
 ######################
 # LOCATION CLASSES #
@@ -470,8 +435,8 @@ class Area():
 
 
 class Combat():
-    """Turn based rpg style combat"""
-    """ Note: Place this inside game class or leave it here?"""
+    """Turn based rpg style combat
+    Note: Place this inside game class or leave it here?"""
     def active_combat(self, opponent, player, player_turn = True ):
         print("A " + opponent.name + " appears")
         while player.health > 0 and opponent.health > 0:
@@ -486,9 +451,14 @@ class Combat():
             while player_turn:
                 print("What will you do?")
                 user_input = input('>>> ')
+                user_input_list = user_input.split()
                 if user_input in player.weapon.attacks.keys():
                     player.attack(opponent, user_input)
                     player_turn = False
+                elif user_input == 'i':
+                    inventory.print_menu(player.inventory)
+                elif user_input_list[0] == 'use' and " ".join(user_input_list[1:]) in [item.name for item in player.inventory]:
+                    player.inventory[user_input_list[1]].special_property_use(player)
                 else:
                     print("Invalid option (in active_combat)")                
             opponent.attack(player)
@@ -543,7 +513,7 @@ all_rooms_dict = {room.name: room for room in all_rooms_list}
 ###################
 
 # Weapon Instances
-# Paramaters: name, description, damage, cost
+# Paramaters: name, description, attacks, cost
 butterfly = Weapon(
     "Butterfly Sword",
     "A butterfly mounted to the hilt of the sword, whowever thought this was a bright idea must be quite mad. Why are you carrying it around? Perhaps you're mad", 
@@ -564,6 +534,13 @@ greatsword = Weapon(
     {"Crushing Blow": 100},
     20
     )
+    
+vamp_blade = Weapon(
+    "Vampiric Blade",
+    "A blade coated in the blood of a vampire causing to be almost black.\n Effect: When an enemy is struck with this blade, it will cause them to bleed profusley.",
+    {"Stab": 10, "Side Swipe": 15},
+    35
+    )
 
 
 # Special Item Instances
@@ -575,7 +552,7 @@ eye_of_aganom = SpecialItem(
     "reveal",
     None,
     90
-    )       
+    )        
 
 pendant = SpecialItem(
     "Pendant",
@@ -585,6 +562,15 @@ pendant = SpecialItem(
     None,
     99999
     )  
+    
+health = SpecialItem(
+    "Health",
+    "Restores health",
+    0,
+    "heal",
+    20,
+    2
+    )
 
 # Armor instances
 # Paramaters: name, description, defense, piece, cost
@@ -734,7 +720,7 @@ starting_room = Room(
     "You awake in what appears to be a dungeon", 
     "Starting Room",
     {"south": torture_chamber, "north": antechamber},
-    [longsword, greatsword, iron_helm],
+    [longsword, greatsword, iron_helm, health],
     [nate, alex], 
     "There are many secrets in this room"
     )

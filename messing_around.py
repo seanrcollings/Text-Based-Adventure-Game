@@ -1,21 +1,14 @@
-import pdb
+import pdb; import pickle
 
 class Game():
 	"""Game class; main element of the game"""
 	def __init__(self, player):
 		self.player = player
+		self.primitive_options = {'i': [inventory.print_menu, self.player.inventory]} # Functions that have no input, simply display information 
 
 	def game_loop(self):
-		self.print_room_menu()
+		self.player.print_room_menu()
 		self.handle_user_input()
-
-	def print_room_menu(self): 
-		print("_" * 28)
-		self.player.current_room.print_room_message()
-		self.player.current_room.print_exits()
-		self.player.current_room.print_items()
-		self.player.current_room.print_npcs() 
-		print("_" * 28)
 
 	def handle_user_input(self):
 		while True:
@@ -24,22 +17,31 @@ class Game():
 			user_input = ''
 			if len(user_input_list) == 1:
 				user_input = user_input_list[0]
+				if user_input in self.primitive_options.keys():
+					self.primitive_options[user_input][0](self.primitive_options[user_input][1])
+				elif user_input == '':
+					pass
+				else:
+					print("Invalid option!")
+					
 			elif len(user_input_list) > 1:
-				pdb.set_trace()
 				verb = user_input_list[0]
 				noun = " ".join(user_input_list[1:])
-
-			if user_input == 'i':
-				inventory.print_menu(self.player.inventory)
-
-			elif user_input == 'health':
-				print(self.player.health)
-
-			elif verb == 'take' and noun in self.player.current_room.items.keys():
-				self.player.take_item(self.player.current_room.remove_item(noun))
-
+				
+				if verb == 'take':
+					self.player.take_item(self.player.current_room.remove_item(noun))
+					
+				elif verb == 'go' or verb == 'go to':
+					self.player.move_rooms(noun)
+					
+				elif verb == 'back' or verb == 'go back':
+					self.player.go_back()
+					
+				elif verb == 'equip':
+					self.player.change_equipment(self.player.get_object(noun))
+					
 			else:
-				print("Invalid Input!")
+				print("Invalid Input!") 
 
 
 
@@ -82,11 +84,10 @@ class Room():
 			print("The people in the room are: %s " % (", ".join(self.npcs.keys())))
 
 	def remove_item(self, item):
-		pdb.set_trace()
 		if item in self.items.keys():
 			return self.items.pop(item)
 		else:
-			print("That item is not in this room")
+			return None
 
 
 
@@ -98,11 +99,57 @@ class Player():
 		self.gold = gold
 		self.inventory = inventory
 		self.current_room = current_room
+		self.previous_rooms = []
+		self.equipment = {'head': None, 'chest': None, 'legs': None, 'weapon': None}
+		
+		
+	def print_room_menu(self): 
+		print("_" * 28)
+		self.current_room.print_room_message()
+		self.current_room.print_exits()
+		self.current_room.print_items()
+		self.current_room.print_npcs() 
+		print("_" * 28)
 
 	def take_item(self, item):
-		pdb.set_trace()
-		self.inventory.append(item)
-		print("You took %s" %(item.name))
+		if item:
+			self.inventory.append(item)
+			print("You took %s" %(item.name))
+		else:
+			print("That item is not in this room")
+			
+	def move_rooms(self, next_room_dir):
+		if next_room_dir in self.current_room.exits.keys():
+			self.previous_rooms.append(self.current_room)
+			self.current_room = self.current_room.exits[next_room_dir]
+			self.print_room_menu()
+		else:
+			print("Not a valid room!")
+			
+	def go_back(self):
+		if len(self.previous_rooms) > 0:
+			self.current_room = self.previous_rooms.pop()
+			self.print_room_menu()
+		else:
+			print("You cannot go back!")
+			
+	def change_equipment(self, item_to_equip):
+		if item_to_equip:
+			print("You do not have that item to equip, or you spelled it wrong. Please try again.")
+		else:
+			if type(item_to_equip) == Weapon:
+				self.equipment['weapon'] = item_to_equip
+			elif type(item_to_equip) == Armor:
+				self.equipment[item_to_equip.armory_type] = item_to_equip
+			else:
+				print("That item is not equipabble.")
+		
+	def get_object(self, checking_item):
+		items_dict = {item.name.lower(): item for item in self.inventory + self.equipment.values()}
+		if checking_item in items_dict.keys():
+			return items_dict[checking_item]
+		else:
+			return None
 
 
 
@@ -173,31 +220,53 @@ class Menu():
 		self.name = name
 
 	def print_menu(self, menu_components):
+		print("_" * 28)
 		print(self.name)
+		print("_" * 28)
 		for item in menu_components:
-			print(item)
+			print(item.name)
+		print("_" * 28)
 
 
 inventory = Menu("INVENTORY")
 
 # SpecialItem instaces
 amulet = SpecialItem(
-	'Amulet',
- 	' This is an amulet',
+	'amulet',
+ 	'This is an amulet',
  	0,
  	None,
  	0,
- 	10)
+ 	10
+ 	)
+ 	
+# Armor instances
+iron_helm = Armor(
+	'Iron Helmet',
+	'This is some armor',
+	5,
+	'helmet',
+	10
+	)
 
 # Room instances
+test_room2 = Room(
+	"Test Room 2",
+	"Another Test room",
+	{},
+	[],
+	[]
+	)
+	
 test_room = Room(
 	"Test Room",
 	"this is a test",
-	{},
+	{"north": test_room2},
 	[amulet],
-	{}
+	[]
 	)
+	
 
-player = Player('Sean', 100, 20, [], test_room)
+player = Player('Sean', 100, 20, [iron_helm], test_room)
 game = Game(player)
 game.game_loop()
