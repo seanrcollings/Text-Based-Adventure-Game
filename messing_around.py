@@ -1,4 +1,4 @@
-import pdb; import pickle
+import pdb; import pickle; from enemy_images import monster_images
 
 class Game():
 	"""Game class; main element of the game"""
@@ -15,6 +15,9 @@ class Game():
 			print("What will you do?")
 			user_input_list = input('>>> ').lower().split()
 			user_input = ''
+			verb = ''
+			noun = ''
+
 			if len(user_input_list) == 1:
 				user_input = user_input_list[0]
 				if user_input in self.primitive_options.keys():
@@ -28,17 +31,20 @@ class Game():
 				verb = user_input_list[0]
 				noun = " ".join(user_input_list[1:])
 				
-				if verb == 'take':
-					self.player.take_item(self.player.current_room.remove_item(noun))
+			if verb == 'take':
+				self.player.take_item(self.player.current_room.remove_item(noun))
 					
-				elif verb == 'go' or verb == 'go to':
-					self.player.move_rooms(noun)
+			elif verb == 'go' or verb == 'go to':
+				self.player.move_rooms(noun)
 					
-				elif verb == 'back' or verb == 'go back':
-					self.player.go_back()
+			elif verb == 'back' or verb == 'go back':
+				self.player.go_back()
 					
-				elif verb == 'equip':
-					self.player.change_equipment(self.player.get_object(noun))
+			elif verb == 'equip':
+				self.player.change_equipment(self.player.get_object(noun))
+
+			elif verb == '':
+				pass
 					
 			else:
 				print("Invalid Input!") 
@@ -47,9 +53,43 @@ class Game():
 
 
 class Combat():
-	"""docstring for Combat"""
-	def __init__(self, arg):
-		self.arg = arg		
+    """Turn based rpg style combat
+    Note: Place this inside game class or leave it here?"""
+    def active_combat(self, opponent, player, player_turn = True ):
+        print("A " + opponent.name + " appears")
+        while player.health > 0 and opponent.health > 0:
+            time.sleep(1.5)
+            os.system('clear')
+            print(opponent.image)
+            print("_" * 28)
+            print("Enemy health : " + "[+]" * int(opponent.health / 5))
+            print("Your  health : " + "[+]" * int(player.health / 5))
+            print("_" * 28)
+            self.print_combat_panel(player)
+            while player_turn:
+                print("What will you do?")
+                user_input = input('>>> ')
+                user_input_list = user_input.split()
+                if user_input in player.weapon.attacks.keys():
+                    player.attack(opponent, user_input)
+                    player_turn = False
+                elif user_input == 'i':
+                    inventory.print_menu(player.inventory)
+                elif user_input_list[0] == 'use' and " ".join(user_input_list[1:]) in [item.name for item in player.inventory]:
+                    player.inventory[user_input_list[1]].special_property_use(player)
+                else:
+                    print("Invalid option (in active_combat)")                
+            opponent.attack(player)
+            player_turn = True
+
+    def print_combat_panel(self, player):
+        print("_" * 28)
+        print("-----------COMBAT-----------")
+        print("_" * 28)
+        print("ATTACK----------------DAMAGE")
+        for key, val in player.weapon.attacks.items():
+            print(key + " " * (26 - len(key + str(val))) + str(val) + " |")
+        print("_" * 28)
 
 
 
@@ -135,18 +175,23 @@ class Player():
 			
 	def change_equipment(self, item_to_equip):
 		if item_to_equip:
-			print("You do not have that item to equip, or you spelled it wrong. Please try again.")
-		else:
 			if type(item_to_equip) == Weapon:
 				self.equipment['weapon'] = item_to_equip
+				print("You equipped %s" % item_to_equip.name)
 			elif type(item_to_equip) == Armor:
-				self.equipment[item_to_equip.armory_type] = item_to_equip
+				self.equipment[item_to_equip.armor_type] = item_to_equip
+				print("You equipped %s" % item_to_equip.name)
 			else:
 				print("That item is not equipabble.")
+		else:
+			print("You do not have that item to equip, or you spelled it wrong. Please try again.")
+
+	def attack(self):
+		
 		
 	def get_object(self, checking_item):
-		items_dict = {item.name.lower(): item for item in self.inventory + self.equipment.values()}
-		if checking_item in items_dict.keys():
+		items_dict = {item.name.lower(): item for item in self.inventory}
+		if checking_item.lower() in items_dict.keys():
 			return items_dict[checking_item]
 		else:
 			return None
@@ -239,13 +284,21 @@ amulet = SpecialItem(
  	0,
  	10
  	)
+
+# Weapon Instances
+longsword = Weapon(
+	'Longsword'
+	'Longsword description',
+	{'side swipe': 15},
+	5
+	)
  	
 # Armor instances
 iron_helm = Armor(
 	'Iron Helmet',
 	'This is some armor',
 	5,
-	'helmet',
+	'head',
 	10
 	)
 
