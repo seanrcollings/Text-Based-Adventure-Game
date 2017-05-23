@@ -106,7 +106,6 @@ class Game():
         if verb == 'take' and noun in self.current_room.items.keys():
             self.player.inventory.append(self.current_room.items[noun])
             print("You took " + noun)
-            print(self.player.items_dict)
         
         elif verb == 'interact' and adjective == 'with' and noun in self.current_room.npcs.keys():
             self.all_npcs[noun].interact_with_player(self.player)
@@ -257,7 +256,11 @@ class NPC():
 
 class Merchant(NPC):
     def __init__(self, name, health, greeting, weapon, pacifist, inventory, guards):
-        Merchant.__init__(name, health, greeting, weapon, pacifist)
+        self.name = name
+        self.health = health
+        self.greeting = greeting
+        self.weapon = weapon
+        self.pacifist = pacifist
         self.inventory = inventory
         self.guards = guards
         all_npcs_list.append(self)

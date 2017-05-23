@@ -1,13 +1,14 @@
-import pdb; import pickle; from enemy_images import monster_images
+import pdb; import pickle; import os; import time; from enemy_images import monster_images
 
 class Game():
 	"""Game class; main element of the game"""
 	def __init__(self, player):
 		self.player = player
-		self.primitive_options = {'i': [inventory.print_menu, self.player.inventory]} # Functions that have no input, simply display information 
+		self.primitive_options = {'i': [inventory.print_menu, self.player.inventory], 'room message': [self.player.print_room_menu, None]} # Functions that have no input, simply display information 
 
 	def game_loop(self):
 		self.player.print_room_menu()
+		self.check_for_enemy()
 		self.handle_user_input()
 
 	def handle_user_input(self):
@@ -21,7 +22,10 @@ class Game():
 			if len(user_input_list) == 1:
 				user_input = user_input_list[0]
 				if user_input in self.primitive_options.keys():
-					self.primitive_options[user_input][0](self.primitive_options[user_input][1])
+					if self.primitive_options[user_input][1]:
+						self.primitive_options[user_input][0](self.primitive_options[user_input][1])
+					else:
+						self.primitive_options[user_input][0]()
 				elif user_input == '':
 					pass
 				else:
@@ -47,49 +51,54 @@ class Game():
 				pass
 					
 			else:
-				print("Invalid Input!") 
+				print("Invalid Input!")
+		
+	def check_for_enemy(self):
+		for npc in self.player.current_room.npcs:
+			if type(npc) == Enemy:
+				combat.active_combat()
 
 
 
 
 class Combat():
-    """Turn based rpg style combat
-    Note: Place this inside game class or leave it here?"""
-    def active_combat(self, opponent, player, player_turn = True ):
-        print("A " + opponent.name + " appears")
-        while player.health > 0 and opponent.health > 0:
-            time.sleep(1.5)
-            os.system('clear')
-            print(opponent.image)
-            print("_" * 28)
-            print("Enemy health : " + "[+]" * int(opponent.health / 5))
-            print("Your  health : " + "[+]" * int(player.health / 5))
-            print("_" * 28)
-            self.print_combat_panel(player)
-            while player_turn:
-                print("What will you do?")
-                user_input = input('>>> ')
-                user_input_list = user_input.split()
-                if user_input in player.weapon.attacks.keys():
-                    player.attack(opponent, user_input)
-                    player_turn = False
-                elif user_input == 'i':
-                    inventory.print_menu(player.inventory)
-                elif user_input_list[0] == 'use' and " ".join(user_input_list[1:]) in [item.name for item in player.inventory]:
-                    player.inventory[user_input_list[1]].special_property_use(player)
-                else:
-                    print("Invalid option (in active_combat)")                
-            opponent.attack(player)
-            player_turn = True
+	"""Turn based rpg style combat
+	Note: Place this inside game class or leave it here?"""
+	def active_combat(self, opponent, player, player_turn = True ):
+		print("A " + opponent.name + " appears")
+		while player.health > 0 and opponent.health > 0:
+			time.sleep(1.5)
+			os.system('clear')
+			print(opponent.image)
+			print("_" * 28)
+			print("Enemy health : " + "[+]" * int(opponent.health / 5))
+			print("Your  health : " + "[+]" * int(player.health / 5))
+			print("_" * 28)
+			self.print_combat_panel(player)
+			while player_turn:
+				print("What will you do?")
+				user_input = input('>>> ')
+				user_input_list = user_input.split()
+				if user_input in player.weapon.attacks.keys():
+					player.attack(opponent, user_input)
+					player_turn = False
+				elif user_input == 'i':
+					inventory.print_menu(player.inventory)
+				elif user_input_list[0] == 'use' and " ".join(user_input_list[1:]) in [item.name for item in player.inventory]:
+					player.inventory[user_input_list[1]].special_property_use(player)
+				else:
+					print("Invalid option (in active_combat)")                
+			opponent.attack(player)
+			player_turn = True
 
-    def print_combat_panel(self, player):
-        print("_" * 28)
-        print("-----------COMBAT-----------")
-        print("_" * 28)
-        print("ATTACK----------------DAMAGE")
-        for key, val in player.weapon.attacks.items():
-            print(key + " " * (26 - len(key + str(val))) + str(val) + " |")
-        print("_" * 28)
+	def print_combat_panel(self, player):
+		print("_" * 28)
+		print("-----------COMBAT-----------")
+		print("_" * 28)
+		print("ATTACK----------------DAMAGE")
+		for key, val in player.weapon.attacks.items():
+			print(key + " " * (26 - len(key + str(val))) + str(val) + " |")
+		print("_" * 28)
 
 
 
@@ -186,9 +195,13 @@ class Player():
 		else:
 			print("You do not have that item to equip, or you spelled it wrong. Please try again.")
 
-	def attack(self):
-		
-		
+	def attack(self, attack):
+		if self.equipment['weapon']:
+			return self.equipment['weapon'].attacks[attack]
+		else:
+			print("You have no weapon! You cannot attack")
+			return 0
+			
 	def get_object(self, checking_item):
 		items_dict = {item.name.lower(): item for item in self.inventory}
 		if checking_item.lower() in items_dict.keys():
@@ -199,64 +212,64 @@ class Player():
 
 
 class NPC():
-    def __init__(self, name, health, greeting, weapon, pacifist):
-        self.name = name
-        self.health = health
-        self.greeting = greeting
-        self.weapon = weapon
-        self.pacifist = pacifist
+	def __init__(self, name, health, greeting, weapon, pacifist):
+		self.name = name
+		self.health = health
+		self.greeting = greeting
+		self.weapon = weapon
+		self.pacifist = pacifist
 
 
 
 class Merchant(NPC):
-    def __init__(self, name, health, greeting, weapon, pacifist, inventory, guards):
-        self.name = name
-        self.health = health
-        self.greeting = greeting
-        self.weapon = weapon
-        self.pacifist = pacifist
-        self.inventory = inventory
-        self.guards = guards
+	def __init__(self, name, health, greeting, weapon, pacifist, inventory, guards):
+		self.name = name
+		self.health = health
+		self.greeting = greeting
+		self.weapon = weapon
+		self.pacifist = pacifist
+		self.inventory = inventory
+		self.guards = guards
 
 
 
 class Enemy():
-    def __init__(self, name, health, greeting, image, weapon, armor):
-        self.name = name
-        self.health = health
-        self.greeting = greeting
-        self.image = image
-        self.weapon = weapon
-        self.armor = armor	
+	def __init__(self, name, health, greeting, image, weapon, armor):
+		self.name = name
+		self.health = health
+		self.greeting = greeting
+		self.image = image
+		self.weapon = weapon
+		self.armor = armor	
 
 
 class SpecialItem():
-    def __init__(self, name, description, damage, special_property, special_val, cost):
-        self.name = name
-        self.description = description
-        self.damage = damage
-        self.special_property = special_property
-        self.special_val = special_val
-        self.cost = cost
+	def __init__(self, name, description, damage, special_property, special_val, cost):
+		self.name = name
+		self.description = description
+		self.damage = damage
+		self.special_property = special_property
+		self.special_val = special_val
+		self.cost = cost
 
 
 
 class Weapon():
-    def __init__(self, name, description, attacks, cost):
-        self.name = name
-        self.description = description
-        self.attacks = attacks
-        self.cost = cost
+	def __init__(self, name, description, attacks, cost):
+		self.name = name
+		self.description = description
+		self.attacks = attacks
+		self.cost = cost
 
 
 
 class Armor():
-    def __init__(self, name, description, defense, armor_type, cost):
-        self.name = name
-        self.description = description
-        self.defense = defense
-        self.armor_type = armor_type
-        self.cost = cost
+	def __init__(self, name, description, defense, armor_type, cost):
+		self.name = name
+		self.description = description
+		self.defense = defense
+		self.armor_type = armor_type
+		self.cost = cost
 
 
 class Menu():
@@ -278,21 +291,21 @@ inventory = Menu("INVENTORY")
 # SpecialItem instaces
 amulet = SpecialItem(
 	'amulet',
- 	'This is an amulet',
- 	0,
- 	None,
- 	0,
- 	10
- 	)
+	'This is an amulet',
+	0,
+	None,
+	0,
+	10
+	)
 
 # Weapon Instances
 longsword = Weapon(
-	'Longsword'
+	'Longsword',
 	'Longsword description',
 	{'side swipe': 15},
 	5
 	)
- 	
+	
 # Armor instances
 iron_helm = Armor(
 	'Iron Helmet',
@@ -319,7 +332,7 @@ test_room = Room(
 	[]
 	)
 	
-
+combat = Combat()
 player = Player('Sean', 100, 20, [iron_helm], test_room)
 game = Game(player)
 game.game_loop()
